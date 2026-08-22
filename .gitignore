@@ -1,0 +1,31 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Caches and temporary files
+*.swp
+*.swo
+*~
+*.bak
+*.backup
+*.tmp
+*.log
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE & Editor metadata
+.idea/
+.vscode/
+*.sublime-workspace
+*.sublime-project
+
+# Agent / AI local workspace files
+.agents/

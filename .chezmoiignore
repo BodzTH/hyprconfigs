@@ -1,11 +1,35 @@
+# Version control & repo meta
 **/.git
 **/.git/**
-**/.DS_Store
-**/*~
-**/*.swp
-**/*.bak
-**/*.backup
+.gitignore
+
+# Documentation & repository assets
 README.md
 assets/**
 scripts/**
 packages/**
+
+# Agent & AI tool configurations
+.agents/**
+**/.agents/**
+**/.agents
+dot_config/**/dot_agents/**
+
+# Python cache
+**/__pycache__/**
+**/*.pyc
+**/*.pyo
+
+# Editor & backup files
+**/.DS_Store
+**/*~
+**/*.swp
+**/*.swo
+**/*.bak
+**/*.backup
+**/*.tmp
+**/*.log
+
+# IDE files
+**/.idea/**
+**/.vscode/**

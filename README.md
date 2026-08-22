@@ -1,4 +1,4 @@
-# ⟡ CachyOS Hyprland Environment — Dotfiles
+# CachyOS Hyprland Environment — Dotfiles
 
 > Modular, reproducible, and hardware-portable **Onyx & Platinum** monochrome Hyprland desktop environment powered by **Chezmoi** and **Lua**.
 
@@ -6,7 +6,7 @@
 
 ---
 
-## ⚡ Quick Start & Reproduction
+## Quick Start & Reproduction
 
 To reproduce this exact environment on any fresh CachyOS or Arch Linux installation:
 
@@ -23,7 +23,7 @@ chezmoi init --apply BodzTH/hyprconfigs
 
 ---
 
-## 🖥️ System & Application Stack
+## System & Application Stack
 
 | Component | Choice | Description |
 | :--- | :--- | :--- |
@@ -42,7 +42,7 @@ chezmoi init --apply BodzTH/hyprconfigs
 
 ---
 
-## 🧩 Hardware Portability System
+## Hardware Portability System
 
 This repository dynamically adapts to different hardware configurations (monitors, GPUs, device sensitivities) without polluting common configs.
 
@@ -78,7 +78,7 @@ UWSM environment files are managed with Chezmoi Go templates (`dot_config/uwsm/e
 
 ---
 
-## 📦 Categorized Package Manifests
+## Categorized Package Manifests
 
 Packages are split into logical manifests in `packages/`:
 
@@ -98,7 +98,7 @@ Packages are split into logical manifests in `packages/`:
 
 ---
 
-## ⌨️ Keybinding Highlights
+## Keybinding Highlights
 
 | Keybinding | Action |
 | :--- | :--- |
@@ -118,7 +118,7 @@ Packages are split into logical manifests in `packages/`:
 
 ---
 
-## 🛠️ Dotfiles Management Cheatsheet
+## Dotfiles Management Cheatsheet
 
 ```bash
 # Check modified files against repo
@@ -143,7 +143,7 @@ git push
 
 ---
 
-## 📸 Updating the Showcase Screenshot
+## Updating the Showcase Screenshot
 
 Whenever you update your wallpaper or styling, run:
 ```bash
