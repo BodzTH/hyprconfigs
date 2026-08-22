@@ -15,7 +15,7 @@ To reproduce this exact environment on any fresh CachyOS or Arch Linux installat
 sudo pacman -S --needed chezmoi git
 
 # 2. Initialize and apply dotfiles
-chezmoi init --apply <your-github-username>
+chezmoi init --apply BodzTH/hyprconfigs
 
 # 3. Run the bootstrap script to install all packages and enable services
 ~/.local/share/chezmoi/scripts/bootstrap.sh

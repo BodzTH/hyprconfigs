@@ -3,7 +3,7 @@
 # CachyOS Hyprland Environment Bootstrap
 # =============================================================================
 # One-command full setup script to restore packages, shells, and services.
-# Run after: chezmoi init --apply <github-username>
+# Run after: chezmoi init --apply BodzTH/hyprconfigs
 # =============================================================================
 
 set -euo pipefail
