@@ -1,0 +1,243 @@
+# ~/.config/yazi/keymap.toml
+
+# ─── File Operations & Clipboard ──────────────────────────────────────────────
+
+# Copy files to system clipboard (Wayland) for browser/GUI pasting
+[[mgr.prepend_keymap]]
+on   = [ "Y" ]
+run  = [
+    '''shell -- for path in "$@"; do echo "file://$path"; done | wl-copy -t text/uri-list''',
+    "yank"
+]
+desc = "Copy files to system clipboard for instant browser pasting"
+
+# Paste screenshot/image from system clipboard (Wayland)
+[[mgr.prepend_keymap]]
+on   = [ "<C-v>" ]
+run  = '''shell -- wl-paste -l | grep -q "^image/" && wl-paste -t image/png > "screenshot_$(date +%%Y%%m%%d_%%H%%M%%S).png" && notify-send "Yazi" "Screenshot pasted" || notify-send "Yazi" "No image in clipboard"'''
+desc = "Paste screenshot/image from system clipboard"
+
+# Trash selected files (recoverable)
+[[mgr.prepend_keymap]]
+on   = [ "d" ]
+run  = "remove --force"
+desc = "Move selected files to system trash (recoverable)"
+
+# Restore selected files from trash (only works in trash folder)
+[[mgr.prepend_keymap]]
+on   = [ "R" ]
+run  = '''shell --block -- for path in "$@"; do
+  name="$(basename "$path")"
+  gio trash --restore "trash:///$name" && echo "✓ Restored: $name" || echo "✗ Failed: $name"
+done; echo; echo "Press Enter to continue..."; read _'''
+desc = "Restore selected file(s) from trash"
+
+# Empty system trash
+[[mgr.prepend_keymap]]
+on   = [ "X" ]
+run  = 'shell --block -- printf "Empty system trash? [y/N]: " && read ans && [ "$ans" = "y" -o "$ans" = "Y" ] && gio trash --empty'
+desc = "Empty system trash"
+
+# Permanent delete selected files (irreversible, prompts for confirmation)
+[[mgr.prepend_keymap]]
+on   = [ "D" ]
+run  = "remove --permanently"
+desc = "Permanently delete selected files (irreversible)"
+
+# Extract archive here
+[[mgr.prepend_keymap]]
+on   = [ "e" ]
+run  = "plugin extract"
+desc = "Extract archive here"
+
+# Compress selection to zip
+[[mgr.prepend_keymap]]
+on   = [ "C" ]
+run  = 'shell --block -- 7z a "$(basename "$1").zip" "$@" && notify-send "Archive Created" "Finished zipping $(basename "$1")" || notify-send "Archive Failed" "Failed to zip $(basename "$1")"'
+desc = "Compress selected files to .zip archive"
+
+# ─── Terminal & App Launchers ──────────────────────────────────────────────────
+
+# Drop to system shell here
+[[mgr.prepend_keymap]]
+on   = [ "`" ]
+run  = 'shell "$SHELL" --block'
+desc = "Drop to system shell here"
+
+# Spawn new Ghostty terminal in current directory
+[[mgr.prepend_keymap]]
+on   = [ "t" ]
+run  = "shell --orphan ghostty"
+desc = "Spawn a new Ghostty terminal in current directory"
+
+# Open in default browser/application
+[[mgr.prepend_keymap]]
+on   = [ "b" ]
+run  = "shell --orphan 'xdg-open \"$@\"'"
+desc = "Open selected in default browser/application"
+
+# ─── Tabs & Search ─────────────────────────────────────────────────────────────
+
+# Create new tab in current directory
+[[mgr.prepend_keymap]]
+on   = [ "<C-t>" ]
+run  = "tab_create --current"
+desc = "Create new tab in current directory"
+
+# Close current tab
+[[mgr.prepend_keymap]]
+on   = [ "<C-w>" ]
+run  = "close"
+desc = "Close current tab"
+
+# Search file contents with ripgrep
+[[mgr.prepend_keymap]]
+on   = [ "F" ]
+run  = "search rg"
+desc = "Search file contents (ripgrep)"
+
+# ─── History Navigation ────────────────────────────────────────────────────────
+
+# Go back in directory history
+[[mgr.prepend_keymap]]
+on   = [ "u" ]
+run  = "back"
+desc = "Go back in directory history"
+
+# Go forward in directory history
+[[mgr.prepend_keymap]]
+on   = [ "U" ]
+run  = "forward"
+desc = "Go forward in directory history"
+
+
+# ─── Quick Directory Navigation ────────────────────────────────────────────────
+
+# Go to Downloads
+[[mgr.prepend_keymap]]
+on   = [ "g", "d" ]
+run  = "cd ~/Downloads"
+desc = "Go to Downloads"
+
+# Go to Documents
+[[mgr.prepend_keymap]]
+on   = [ "g", "o" ]
+run  = "cd ~/Documents"
+desc = "Go to Documents"
+
+# Go to Pictures
+[[mgr.prepend_keymap]]
+on   = [ "g", "p" ]
+run  = "cd ~/Pictures"
+desc = "Go to Pictures"
+
+# Go to Videos
+[[mgr.prepend_keymap]]
+on   = [ "g", "v" ]
+run  = "cd ~/Videos"
+desc = "Go to Videos"
+
+# Go to Music
+[[mgr.prepend_keymap]]
+on   = [ "g", "m" ]
+run  = "cd ~/Music"
+desc = "Go to Music"
+
+# Go to ~/.config
+[[mgr.prepend_keymap]]
+on   = [ "g", "c" ]
+run  = "cd ~/.config"
+desc = "Go to ~/.config"
+
+# Go home
+[[mgr.prepend_keymap]]
+on   = [ "~" ]
+run  = "cd ~"
+desc = "Go home"
+
+# Go to Trash folder
+[[mgr.prepend_keymap]]
+on   = [ "g", "r" ]
+run  = "cd ~/.local/share/Trash/files"
+desc = "Go to Trash folder"
+
+# ─── Device Mounting & Management ──────────────────────────────────────────────
+
+# Mount USB drives and go to mounts
+[[mgr.prepend_keymap]]
+on   = [ "M", "u" ]
+run  = [
+    "shell -- udiskie-mount -a",
+    "cd /run/media/bodz"
+]
+desc = "Mount USB drives and go to mounts"
+
+# Safely unmount all USB drives (no eject)
+[[mgr.prepend_keymap]]
+on   = [ "M", "U" ]
+run  = [
+    "cd ~",
+    "shell -- udiskie-umount -a"
+]
+desc = "Safely unmount all USB drives (no eject)"
+
+# Safely unmount and eject all USB drives
+[[mgr.prepend_keymap]]
+on   = [ "M", "e" ]
+run  = [
+    "cd ~",
+    "shell -- udiskie-umount -a -d"
+]
+desc = "Safely unmount and eject all USB drives"
+
+# Mount phone/MTP devices and go to mounts
+[[mgr.prepend_keymap]]
+on   = [ "M", "a" ]
+run  = [
+    "cd /run/user/1000/gvfs",
+    "shell --orphan -- sh -c 'YAZI_ID=$YAZI_ID ~/.config/yazi/yazi-mtp.py mount'"
+]
+desc = "Mount phone/MTP devices and go to mounts"
+
+# Unmount all phone/MTP devices
+[[mgr.prepend_keymap]]
+on   = [ "M", "A" ]
+run  = [
+    "cd ~",
+    "shell --orphan -- sh -c 'YAZI_ID=$YAZI_ID ~/.config/yazi/yazi-mtp.py unmount'"
+]
+desc = "Unmount all phones/MTP devices"
+
+# ─── Preview Navigation ────────────────────────────────────────────────────────
+
+# Seek up in the preview (Shift + Up / Shift + Left / PageUp)
+[[mgr.prepend_keymap]]
+on   = [ "<S-Up>" ]
+run  = "seek -5"
+desc = "Seek up in the preview"
+
+[[mgr.prepend_keymap]]
+on   = [ "<PageUp>" ]
+run  = "seek -5"
+desc = "Seek up in the preview"
+
+[[mgr.prepend_keymap]]
+on   = [ "<S-Left>" ]
+run  = "seek -5"
+desc = "Seek up in the preview"
+
+# Seek down in the preview (Shift + Down / Shift + Right / PageDown)
+[[mgr.prepend_keymap]]
+on   = [ "<S-Down>" ]
+run  = "seek 5"
+desc = "Seek down in the preview"
+
+[[mgr.prepend_keymap]]
+on   = [ "<PageDown>" ]
+run  = "seek 5"
+desc = "Seek down in the preview"
+
+[[mgr.prepend_keymap]]
+on   = [ "<S-Right>" ]
+run  = "seek 5"
+desc = "Seek down in the preview"

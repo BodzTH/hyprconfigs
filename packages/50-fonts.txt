@@ -1,0 +1,10 @@
+awesome-terminal-fonts
+cantarell-fonts
+noto-fonts
+noto-fonts-emoji
+ttf-bitstream-vera
+ttf-cascadia-code-nerd
+ttf-dejavu
+ttf-liberation
+ttf-meslo-nerd
+ttf-opensans

@@ -1,0 +1,6 @@
+{{- $gpu := "amd" -}}
+{{- $hostname := .chezmoi.hostname -}}
+
+[data]
+    hostname = {{ $hostname | quote }}
+    gpu = {{ $gpu | quote }}

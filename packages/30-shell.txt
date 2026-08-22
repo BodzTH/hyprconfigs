@@ -1,0 +1,16 @@
+bat
+btop
+duf
+eza
+ffmpegthumbnailer
+fish
+fzf
+libdvdcss
+libgsf
+libopenraw
+mediainfo
+poppler-glib
+ripgrep
+starship
+yazi
+zoxide

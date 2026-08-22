@@ -1,0 +1,14 @@
+7zip
+ark
+chezmoi
+firefox
+fuse2
+inkscape
+mpv
+neovim
+obsidian
+obs-studio
+openrgb
+pavucontrol
+podman
+podman-compose

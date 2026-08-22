@@ -1,0 +1,85 @@
+# ~/.config/yazi/yazi.toml
+# Only settings that differ from yazi's built-in defaults are listed here.
+# Defaults: https://github.com/sxyazi/yazi/blob/shipped/yazi-config/preset/yazi-default.toml
+
+[mgr]
+ratio          = [1, 3, 4]     # default: [1, 4, 3] — wider preview for code/images
+sort_by        = "natural"     # default: "alphabetical"
+show_hidden    = true          # default: false
+show_symlink   = true
+linemode       = "size"        # default: "none"
+scrolloff      = 5
+mouse_events   = [ "click", "scroll" ]
+
+[preview]
+tab_size       = 4             # default: 2
+max_width      = 1920          # default: 600 — better for HiDPI
+max_height     = 1080          # default: 900
+wrap           = "yes"
+image_filter   = "lanczos3"   # default: "triangle" — higher quality scaling
+image_quality  = 90            # default: 75 — higher quality thumbnails
+
+[plugin]
+# Only custom previewers that differ from the built-in preset:
+# - text/* and common text-like mimes → use "code" (syntax-highlighted) previewer
+# - image/{avif,hei?,jxl,svg+xml} → use "magick" (ImageMagick) instead of built-in
+prepend_previewers = [
+    { mime = "text/*",                       run = "code" },
+    { mime = "*/xml",                        run = "code" },
+    { mime = "*/javascript",                 run = "code" },
+    { mime = "*/x-wine-extension-ini",       run = "code" },
+    { mime = "application/{json,x-ndjson}", run = "json" },
+    { mime = "application/toml",             run = "code" },
+    { mime = "image/{avif,hei?,jxl,svg+xml}", run = "magick" },
+]
+prepend_preloaders = [
+    { mime = "image/{avif,hei?,jxl,svg+xml}", run = "magick" },
+]
+
+[opener]
+edit = [
+    { run = '${EDITOR:-nvim} "$@"', block = true, for = "unix" },
+]
+play = [
+    { run = 'mpv "$@"', orphan = true, for = "unix" },
+]
+open = [
+    { run = 'xdg-open "$@"', desc = "Open", for = "unix" },
+]
+virtualbox = [
+    { run = 'VirtualBox "$@"', orphan = true, desc = "VirtualBox", for = "unix" },
+]
+extract = [
+    { run = 'plugin extract', desc = "Extract here", for = "unix" },
+]
+archive = [
+    { run = 'ark "$@"', orphan = true, desc = "Browse in Ark", for = "unix" },
+]
+
+[open]
+prepend_rules = [
+    # VirtualBox
+    { url = "*.ova", use = ["virtualbox", "open"] },
+    { url = "*.ovf", use = ["virtualbox", "open"] },
+
+    # Text & Code
+    { mime = "text/*",                       use = ["edit", "open"] },
+    { mime = "*/xml",                        use = ["edit", "open"] },
+    { mime = "*/javascript",                 use = ["edit", "open"] },
+    { mime = "application/{json,x-ndjson}", use = ["edit", "open"] },
+    { mime = "application/toml",             use = ["edit", "open"] },
+
+    # Media
+    { mime = "video/*",                      use = ["play", "open"] },
+    { mime = "audio/*",                      use = ["play", "open"] },
+    { mime = "image/*",                      use = ["open", "edit"] },
+
+    # Documents
+    { mime = "application/pdf",              use = ["open", "edit"] },
+
+    # Archives — browse with Ark first, extract second, open as fallback
+    { mime = "application/{zip,x-tar,gzip,x-gzip,x-bzip2,x-xz,x-7z-compressed,x-rar,zstd,x-compressed-tar,x-lzma,x-cpio}", use = ["archive", "extract", "open"] },
+
+    # Fallback
+    { mime = "*", use = ["open", "edit"] },
+]

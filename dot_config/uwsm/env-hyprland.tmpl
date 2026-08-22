@@ -1,0 +1,4 @@
+{{ if eq .hostname "hyprcachyos" -}}
+# Multi-GPU setup (Discrete RX 7700 XT primary, Raphael iGPU secondary)
+export AQ_DRM_DEVICES="/dev/dri/card1:/dev/dri/card0"
+{{ end -}}

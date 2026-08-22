@@ -1,0 +1,138 @@
+# ~/.config/yazi/theme.toml
+# Custom color theme — Onyx Platinum (dark, desaturated palette)
+# The built-in [icon] section is intentionally omitted; yazi loads its default
+# icon set automatically. Only explicit overrides belong here.
+
+[app]
+overall = { bg = "#111111" }
+
+[mgr]
+cwd = { fg = "#87afd7" }
+
+find_keyword  = { fg = "#dfaf87", italic = true }
+find_position = { fg = "#af87af", bg = "reset", italic = true }
+
+marker_copied   = { fg = "#87af87", bg = "#87af87" }
+marker_cut      = { fg = "#d75f5f", bg = "#d75f5f" }
+marker_marked   = { fg = "#87afd7", bg = "#87afd7" }
+marker_selected = { fg = "#87afaf", bg = "#87afaf" }
+
+count_copied   = { fg = "#111111", bg = "#87af87" }
+count_cut      = { fg = "#111111", bg = "#d75f5f" }
+count_selected = { fg = "#111111", bg = "#87afaf" }
+
+border_symbol = "│"
+border_style  = { fg = "#555555" }
+
+[tabs]
+active   = { fg = "#111111", bg = "#e5e5e5", bold = true }
+inactive = { fg = "#888888", bg = "#1c1c1c" }
+
+[mode]
+normal_main = { fg = "#111111", bg = "#e5e5e5", bold = true }
+normal_alt  = { fg = "#87afaf", bg = "#1c1c1c" }
+
+select_main = { fg = "#111111", bg = "#87af87", bold = true }
+select_alt  = { fg = "#87af87", bg = "#1c1c1c" }
+
+unset_main  = { fg = "#111111", bg = "#d75f5f", bold = true }
+unset_alt   = { fg = "#d75f5f", bg = "#1c1c1c" }
+
+[indicator]
+parent  = { fg = "#111111", bg = "#888888" }
+current = { fg = "#111111", bg = "#e5e5e5" }
+preview = { fg = "#111111", bg = "#e5e5e5" }
+
+[status]
+sep_left  = { open = "", close = "" }
+sep_right = { open = "", close = "" }
+
+progress_label  = { fg = "#ffffff", bold = true }
+progress_normal = { fg = "#87af87", bg = "#262626" }
+progress_error  = { fg = "#dfaf87", bg = "#d75f5f" }
+
+perm_type  = { fg = "#87afaf" }
+perm_read  = { fg = "#dfaf87" }
+perm_write = { fg = "#d75f5f" }
+perm_exec  = { fg = "#87af87" }
+perm_sep   = { fg = "#555555" }
+
+[input]
+border   = { fg = "#e5e5e5" }
+title    = {}
+value    = {}
+selected = { reversed = true }
+
+[pick]
+border   = { fg = "#3d3d3d" }
+active   = { fg = "#af87af" }
+inactive = {}
+
+[confirm]
+border  = { fg = "#e5e5e5" }
+title   = { fg = "#e5e5e5" }
+body    = {}
+list    = {}
+btn_yes = { reversed = true }
+btn_no  = {}
+
+[cmp]
+border = { fg = "#3d3d3d" }
+
+[tasks]
+border  = { fg = "#3d3d3d" }
+title   = {}
+hovered = { fg = "#af87af", bold = true }
+
+[which]
+mask            = { bg = "#1c1c1c" }
+cand            = { fg = "#87afd7" }
+rest            = { fg = "#888888" }
+desc            = { fg = "#af87af" }
+separator       = "  "
+separator_style = { fg = "#3d3d3d" }
+
+[help]
+on      = { fg = "#87afd7" }
+run     = { fg = "#af87af" }
+desc    = { fg = "#888888" }
+hovered = { bg = "#3d3d3d", bold = true }
+footer  = { fg = "#e5e5e5", bg = "#262626" }
+
+[notify]
+title_info  = { fg = "#87afd7" }
+title_warn  = { fg = "#dfaf87" }
+title_error = { fg = "#d75f5f" }
+
+[filetype]
+rules = [
+    # Media
+    { mime = "image/*",           fg = "#dfaf87" },
+    { mime = "{audio,video}/*",   fg = "#af87af" },
+
+    # Archives
+    { mime = "application/{zip,rar,7z*,tar,gzip,xz,zstd,bzip*,lzma,compress,archive,cpio,arj,xar,ms-cab*}", fg = "#d75f5f" },
+
+    # Documents
+    { mime = "application/{pdf,doc,rtf}", fg = "#87afd7" },
+
+    # Virtual file system
+    { mime = "vfs/{absent,stale}", fg = "#262626" },
+
+    # Special files
+    { url = "*",  is = "orphan", bg = "#d75f5f" },
+    { url = "*",  is = "exec",   fg = "#87af87" },
+
+    # Dummy files
+    { url = "*",  is = "dummy", bg = "#d75f5f" },
+    { url = "*/", is = "dummy", bg = "#d75f5f" },
+
+    # Fallback
+    { url = "*/", fg = "#87afaf" },
+]
+
+[spot]
+border   = { fg = "#e5e5e5" }
+title    = { fg = "#e5e5e5" }
+tbl_cell = { fg = "#e5e5e5", reversed = true }
+tbl_col  = { bold = true }

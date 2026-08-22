@@ -1,0 +1,11 @@
+**/.git
+**/.git/**
+**/.DS_Store
+**/*~
+**/*.swp
+**/*.bak
+**/*.backup
+README.md
+assets/**
+scripts/**
+packages/**

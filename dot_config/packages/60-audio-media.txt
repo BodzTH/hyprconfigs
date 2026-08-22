@@ -1,0 +1,11 @@
+alsa-plugins
+alsa-utils
+gst-libav
+gst-plugin-pipewire
+gst-plugins-bad
+gst-plugins-ugly
+gst-plugin-va
+pipewire-alsa
+pipewire-pulse
+sof-firmware
+wireplumber
