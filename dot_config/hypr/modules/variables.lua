@@ -13,14 +13,14 @@ vars.mainMod = "SUPER"                    -- Windows key as primary modifier
 
 -- ▓▒░ DEFAULT APPLICATION VARIABLES
 local home = os.getenv("HOME") or ("/home/" .. (os.getenv("USER") or "bodz"))
-vars.terminal        = "ghostty"
-vars.fileManager     = "ghostty --class=org.yazi.fm -e fish -c 'y'"   -- yazi via ghostty
+vars.terminal        = "kitty"
+vars.fileManager     = "kitty --class=org.yazi.fm -e fish -c 'y'"   -- yazi via kitty
 vars.browser         = "firefox"
-vars.terminal_editor = "ghostty -e nvim"   -- NvChad inside ghostty
+vars.terminal_editor = "kitty -e nvim"   -- NvChad inside kitty
 vars.editor          = "neovim"          -- GUI neovim
 vars.calculator      = "qalculate-gtk"
 vars.notingApp       = "obsidian"
-vars.updater         = "ghostty --class=cachy.update -e sh -c 'sudo pacman -Syu; echo \"\nPress Enter to close...\"; read'"
+vars.updater         = "kitty --class=cachy.update -e sh -c 'sudo pacman -Syu; echo \"\nPress Enter to close...\"; read'"
 vars.antigravity     = home .. "/Apps/Antigravity/Antigravity.AppImage --ozone-platform-hint=auto --enable-features=WaylandWindowDecorations"
 vars.bar             = "env QT_QPA_PLATFORMTHEME=qt6ct quickshell"
 

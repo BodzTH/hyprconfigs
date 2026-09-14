@@ -106,7 +106,7 @@ Packages are split into logical manifests in `packages/`:
 
 | Keybinding | Action |
 | :--- | :--- |
-| <kbd>SUPER</kbd> + <kbd>T</kbd> | Launch Ghostty terminal |
+| <kbd>SUPER</kbd> + <kbd>T</kbd> | Launch Kitty terminal |
 | <kbd>SUPER</kbd> + <kbd>E</kbd> | Launch Yazi file manager |
 | <kbd>SUPER</kbd> + <kbd>F</kbd> | Launch Firefox |
 | <kbd>SUPER</kbd> + <kbd>C</kbd> | Launch Neovim (NvChad) |

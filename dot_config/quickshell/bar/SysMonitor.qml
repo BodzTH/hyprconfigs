@@ -25,7 +25,7 @@ Rectangle {
 
     TapHandler {
         onTapped: {
-            Quickshell.execDetached(["ghostty", "-e", "btop"])
+            Quickshell.execDetached(["kitty", "-e", "btop"])
         }
     }
 

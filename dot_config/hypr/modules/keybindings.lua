@@ -13,7 +13,7 @@ local m    = vars.mainMod
 hl.bind(m .. " + T", hl.dsp.exec_cmd(vars.terminal))
 hl.bind(m .. " + E", hl.dsp.exec_cmd(vars.fileManager))
 hl.bind(m .. " + F", hl.dsp.exec_cmd(vars.browser))
-hl.bind(m .. " + C", hl.dsp.exec_cmd(vars.terminal_editor))     -- ghostty -e nvim (NvChad)
+hl.bind(m .. " + C", hl.dsp.exec_cmd(vars.terminal_editor))     -- kitty -e nvim (NvChad)
 hl.bind(m .. " + SHIFT + C", hl.dsp.exec_cmd(vars.editor))      -- neovim (GUI)
 hl.bind(m .. " + X", hl.dsp.exec_cmd(vars.calculator))
 hl.bind(m .. " + O", hl.dsp.exec_cmd(vars.notingApp))

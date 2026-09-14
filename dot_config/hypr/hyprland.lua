@@ -8,7 +8,7 @@
 -- Hyprland Lua Configuration — Modular Entry Point
 -- https://wiki.hypr.land/Configuring/Start/
 --
--- Stack: ghostty · yazi · quickshell · awww · neovim (NvChad)
+-- Stack: kitty · yazi · quickshell · awww · neovim (NvChad)
 -- Theme: Onyx & Platinum (monochrome) + catppuccin-mocha-dark-cursors
 -- ═══════════════════════════════════════════════════════════════
 

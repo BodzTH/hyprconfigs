@@ -56,7 +56,7 @@ PanelWindow {
         if (cmdList.length === 0) return;
         
         if (app.runInTerminal) {
-            cmdList = ["ghostty", "-e"].concat(cmdList);
+            cmdList = ["kitty", "-e"].concat(cmdList);
         }
         Quickshell.execDetached(cmdList);
         launcherWindow.visible = false;

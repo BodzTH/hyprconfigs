@@ -83,7 +83,7 @@ QtObject {
     }
 
     function openManager() {
-        Quickshell.execDetached(["ghostty", "-e", "nmtui"]);
+        Quickshell.execDetached(["kitty", "-e", "nmtui"]);
     }
 
     // Fetch detailed info for the active connection
