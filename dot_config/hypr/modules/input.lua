@@ -18,7 +18,7 @@ hl.config({
     cursor = {
         warp_on_change_workspace = 0,     -- Don't teleport cursor on workspace switch
         no_break_fs_vrr          = 2,     -- Auto-prevent cursor movement from breaking VRR
-        no_hardware_cursors      = 2,     -- Auto (disable when tearing). XWayland tearing needs gamescope.
+        no_hardware_cursors      = 0,     -- Always use hardware cursors (cheaper than software)
         min_refresh_rate         = 48,    -- FreeSync floor Hz (prevents drops below this)
     },
 })

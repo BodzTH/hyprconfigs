@@ -16,7 +16,6 @@ local home = os.getenv("HOME") or ("/home/" .. (os.getenv("USER") or "bodz"))
 vars.terminal        = "ghostty"
 vars.fileManager     = "ghostty --class=org.yazi.fm -e fish -c 'y'"   -- yazi via ghostty
 vars.browser         = "firefox"
-vars.menu            = "rofi -show drun"
 vars.terminal_editor = "ghostty -e nvim"   -- NvChad inside ghostty
 vars.editor          = "neovim"          -- GUI neovim
 vars.calculator      = "qalculate-gtk"

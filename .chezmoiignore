@@ -13,7 +13,14 @@ packages/**
 .agents/**
 **/.agents/**
 **/.agents
-dot_config/**/dot_agents/**
+
+# Vendored upstream documentation (reference only; not meant to land in ~/.config)
+.config/hypr/hyprwiki/**
+.config/quickshell/quickshell-documentation/**
+.config/yazi/yazi-documentation/**
+
+# App-managed state (fish rewrites this constantly; never track it)
+.config/fish/fish_variables
 
 # Python cache
 **/__pycache__/**

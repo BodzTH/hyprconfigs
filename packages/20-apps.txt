@@ -12,3 +12,4 @@ openrgb
 pavucontrol
 podman
 podman-compose
+qalculate-gtk

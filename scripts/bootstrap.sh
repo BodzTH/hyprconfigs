@@ -40,9 +40,14 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 PACKAGES_DIR="$REPO_DIR/packages"
 
-# Fallback to ~/.config/packages if running outside repo
-if [ ! -d "$PACKAGES_DIR" ] && [ -d "$HOME/.config/packages" ]; then
-    PACKAGES_DIR="$HOME/.config/packages"
+# Fallback to the chezmoi source directory if running outside the repo checkout
+if [ ! -d "$PACKAGES_DIR" ] && command -v chezmoi &>/dev/null; then
+    PACKAGES_DIR="$(chezmoi source-path)/packages"
+fi
+
+if [ ! -d "$PACKAGES_DIR" ]; then
+    echo "Error: package manifests not found (looked in $PACKAGES_DIR)." >&2
+    exit 1
 fi
 
 # 2. Synchronize package databases
@@ -83,7 +88,8 @@ systemctl --user enable --now pipewire.socket pipewire-pulse.socket wireplumber.
 
 # 7. Apply Chezmoi Configurations
 if command -v chezmoi &>/dev/null; then
-    log_info "Re-applying chezmoi dotfiles..."
+    log_info "Re-detecting GPU/hostname and re-applying chezmoi dotfiles..."
+    chezmoi init    # regenerates chezmoi.toml (re-runs GPU detection)
     chezmoi apply --force
     log_success "Dotfiles applied."
 fi

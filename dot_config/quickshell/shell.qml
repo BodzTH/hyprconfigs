@@ -29,59 +29,27 @@ ShellRoot {
         return Quickshell.screens.find(scr => scr.name === name) || null;
     }
 
-    onTogglePowerMenu: {
-        if (powerMenuPanel.visible) {
-            powerMenuPanel.visible = false;
+    /**
+     * Shows a singleton overlay panel on the focused screen, or hides it if
+     * already visible. Shared by every toggleX signal below.
+     * @param {var} panel Panel instance with `visible` and `screen` properties.
+     */
+    function togglePanel(panel) {
+        if (panel.visible) {
+            panel.visible = false;
             return;
         }
         var scr = getFocusedScreen();
-        if (scr) powerMenuPanel.screen = scr;
-        powerMenuPanel.visible = true;
+        if (scr) panel.screen = scr;
+        panel.visible = true;
     }
 
-    onToggleQuickSettings: {
-        if (quickSettingsPanel.visible) {
-            quickSettingsPanel.visible = false;
-            return;
-        }
-        var scr = getFocusedScreen();
-        if (scr) quickSettingsPanel.screen = scr;
-        quickSettingsPanel.visible = true;
-    }
-
-    onToggleCalendar: {
-        if (calendarPanel.visible) {
-            calendarPanel.visible = false;
-            return;
-        }
-        var scr = getFocusedScreen();
-        if (scr) calendarPanel.screen = scr;
-        calendarPanel.visible = true;
-    }
-
-    onToggleNotifications: {
-        if (notificationPanel.visible) {
-            notificationPanel.visible = false;
-            return;
-        }
-        var scr = getFocusedScreen();
-        if (scr) notificationPanel.screen = scr;
-        notificationPanel.visible = true;
-    }
-
-    onToggleNetwork: {
-        if (networkPanel.visible) {
-            networkPanel.visible = false;
-            return;
-        }
-        var scr = getFocusedScreen();
-        if (scr) networkPanel.screen = scr;
-        networkPanel.visible = true;
-    }
-
-    onToggleWallpaperSelector: {
-        wallpaperSelectorPanel.toggle(getFocusedScreen());
-    }
+    onTogglePowerMenu: togglePanel(powerMenuPanel)
+    onToggleQuickSettings: togglePanel(quickSettingsPanel)
+    onToggleCalendar: togglePanel(calendarPanel)
+    onToggleNotifications: togglePanel(notificationPanel)
+    onToggleNetwork: togglePanel(networkPanel)
+    onToggleWallpaperSelector: wallpaperSelectorPanel.toggle(getFocusedScreen())
 
     // ▓▒░ POWER MENU — SUPER+Backspace (GlobalShortcut registered here to avoid duplication per-monitor)
     GlobalShortcut {

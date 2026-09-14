@@ -20,6 +20,7 @@ Row {
         if (id.includes("antigravity")) return "";
         
         const mappings = [
+            { key: "cachy", icon: "/usr/share/icons/cachyos.svg" },
             { key: "ghostty", icon: "com.mitchellh.ghostty" },
             { key: "kitty", icon: "kitty" },
             { key: "foot", icon: "foot" },

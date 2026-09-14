@@ -1,7 +1,7 @@
 require("nvchad.configs.lspconfig").defaults()
 
 local lspconfig = require "lspconfig"
-local servers = {}
+local servers = { "gopls" }
 
 local nvim_lspconfig = require "nvchad.configs.lspconfig"
 local on_attach = nvim_lspconfig.on_attach
@@ -22,7 +22,40 @@ require("mason-lspconfig").setup {
         capabilities = capabilities,
       }
 
+      -- gopls: official Go language server (golang.org/x/tools/gopls)
+      if server_name == "gopls" then
+        opts.settings = {
+          gopls = {
+            analyses = {
+              unusedparams = true,
+              shadow = true,
+            },
+            staticcheck = true,
+            gofumpt = false,
+            codelenses = {
+              gc_details = false,
+              generate = true,
+              regenerate_cgo = true,
+              run_govulncheck = true,
+              test = true,
+              tidy = true,
+              upgrade_dependency = true,
+              vendor = true,
+            },
+            hints = {
+              assignVariableTypes = true,
+              compositeLiteralFields = true,
+              compositeLiteralTypes = true,
+              constantValues = true,
+              functionTypeParameters = true,
+              parameterNames = true,
+              rangeVariableTypes = true,
+            },
+          },
+        }
+      end
+
       lspconfig[server_name].setup(opts)
     end,
   },
-} 
+}

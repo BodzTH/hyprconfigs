@@ -95,8 +95,10 @@ scrollback-limit = 10000000
 # Shaders & Effects
 # -----------------------------------------------------------------------------
 
-custom-shader = shaders/cursor_lightning.glsl
-custom-shader = shaders/cursor_warp.glsl
-custom-shader-animation = always
+# Disabled: the two-shader chain allocates full-resolution offscreen render
+# targets per surface, and `always` kept them animating even when unfocused.
+# custom-shader = shaders/cursor_lightning.glsl
+# custom-shader = shaders/cursor_warp.glsl
+# custom-shader-animation = always
 
 

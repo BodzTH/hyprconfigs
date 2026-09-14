@@ -5,6 +5,7 @@ eza
 ffmpegthumbnailer
 fish
 fzf
+jq
 libdvdcss
 libgsf
 libopenraw

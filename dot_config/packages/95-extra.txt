@@ -1,8 +1,0 @@
-accountsservice
-biber
-hunspell
-s-nail
-texlive-basic
-texlive-fontsextra
-texlive-latex
-texlive-latexextra

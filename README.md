@@ -40,6 +40,8 @@ chezmoi init --apply BodzTH/hyprconfigs
 | **Idle Daemon** | [hypridle](https://wiki.hypr.land/Hypr-Ecosystem/hypridle/) | Automated screen blanking & DPMS |
 | **Theming** | Onyx & Platinum | Monochrome palette with Catppuccin Mocha Dark cursors |
 
+`hypr/scripts/sync_border.py` watches the active wallpaper and rewrites the accent color into `hyprlock.conf`, `hyprtoolkit.conf`, and the `gtk-3.0`/`gtk-4.0` CSS on every change. The repo tracks those files with the static `#e5e5e5` accent as a seed — a live diff there after the daemon runs is expected, not drift.
+
 ---
 
 ## Hardware Portability System
@@ -71,7 +73,7 @@ return {
 ```
 
 ### 2. Environment Variables & GPU Profiles (`~/.config/uwsm/`)
-UWSM environment files are managed with Chezmoi Go templates (`dot_config/uwsm/env.tmpl` and `dot_config/uwsm/env-hyprland.tmpl`).
+UWSM environment files are managed with Chezmoi Go templates (`dot_config/uwsm/env.tmpl` and `dot_config/uwsm/env-hyprland.tmpl`). The GPU vendor is detected automatically at `chezmoi init` time by reading `/sys/class/drm/*/device/vendor` (discrete beats integrated on hybrid setups); it's cached in `~/.config/chezmoi/chezmoi.toml`, so re-run `chezmoi init` after swapping GPUs.
 - **AMD**: Activates RADV, `radeonsi`, DXVK device filter, and dual-GPU AQ_DRM_DEVICES.
 - **NVIDIA**: Activates `nvidia-drm`, `__GLX_VENDOR_LIBRARY_NAME=nvidia`, and `NVD_BACKEND=direct`.
 - **Intel**: Activates `iHD` VA-API drivers.
@@ -95,6 +97,8 @@ Packages are split into logical manifests in `packages/`:
 | `80-gpu-amd.txt` | Vulkan Radeon, OpenCL Mesa, AMDGPU drivers |
 | `90-networking.txt` | NetworkManager, Bluetooth, OpenSSH, UFW, wireless tools |
 | `95-extra.txt` | LaTeX, TeXLive, and supplementary utilities |
+
+**Not covered by the manifests** (not packaged in the official repos, so `bootstrap.sh` can't install them — set these up manually before applying): the [Graphite GTK theme](https://github.com/vinceliuice/Graphite-gtk-theme) into `~/.themes/Graphite-Dark`, and the `catppuccin-mocha-dark-cursors` cursor theme.
 
 ---
 

@@ -44,12 +44,14 @@ hl.layer_rule({
     ignore_alpha = 0.2,
 })
 
--- Blur rofi (fallback menu/launcher)
+-- Blur hyprtoolkit & hyprshutdown layers & dialogs
 hl.layer_rule({
-    name  = "blur-rofi",
-    match = { namespace = "rofi" },
-    blur  = true,
-    blur_popups = true,
+    name         = "blur-hyprtoolkit",
+    match        = { namespace = "^(hyprtoolkit.*|hyprshutdown.*|hyprpolkitagent.*|hyprland-.*)$" },
+    blur         = true,
+    blur_popups  = true,
+    ignore_alpha = 0.01,
+    dim_around   = true,
 })
 
 -- NOTE: wofi and dunst blur rules removed — neither tool is used any more.

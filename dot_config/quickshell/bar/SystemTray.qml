@@ -35,6 +35,7 @@ Row {
                 source: modelData.icon
                 width: 22
                 height: 22
+                sourceSize: Qt.size(22, 22)
                 fillMode: Image.PreserveAspectFit
 
                 // Handle load errors or fallback

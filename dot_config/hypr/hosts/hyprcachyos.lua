@@ -4,14 +4,14 @@ return {
     monitors = {
         {
             output   = "",
-            mode     = "1920x1080@165.00Hz",
+            mode     = "1920x1080@165.00",
             position = "0x0",
             scale    = 1,
         },
     },
-    apps = {
-        antigravity = "/home/" .. (os.getenv("USER") or "bodz") .. "/Apps/Antigravity/Antigravity.AppImage --ozone-platform-hint=auto --enable-features=WaylandWindowDecorations",
-    },
+    -- NOTE: no app overrides needed — modules/variables.lua's defaults (including antigravity)
+    -- already match this host.
+    apps = {},
     devices = {
         {
             name          = "logitech-g305-1",

@@ -251,8 +251,94 @@ def apply_color_to_openrgb(color_info):
     except Exception:
         pass
 
+def apply_color_to_hyprtoolkit(color_info):
+    """Synchronizes hyprtoolkit accent color with the active border/wallpaper color."""
+    hex_color = color_info["hex"].lower()
+    config_path = os.path.expanduser("~/.config/hypr/hyprtoolkit.conf")
+    if not os.path.isfile(config_path):
+        return
+
+    try:
+        with open(config_path, "r") as f:
+            lines = f.readlines()
+
+        new_lines = []
+        for line in lines:
+            if line.strip().startswith("accent ="):
+                new_lines.append(f"accent = 0xFF{hex_color}\n")
+            else:
+                new_lines.append(line)
+
+        tmp_path = config_path + ".tmp"
+        with open(tmp_path, "w") as f:
+            f.writelines(new_lines)
+        os.replace(tmp_path, config_path)
+    except Exception as e:
+        print(f"Error updating hyprtoolkit config: {e}", file=sys.stderr)
+
+def apply_color_to_hyprlock(color_info):
+    """Synchronizes hyprlock accent color with the active border/wallpaper color."""
+    hex_color = color_info["hex"].lower()
+    config_path = os.path.expanduser("~/.config/hypr/hyprlock.conf")
+    if not os.path.isfile(config_path):
+        return
+
+    try:
+        with open(config_path, "r") as f:
+            lines = f.readlines()
+
+        new_lines = []
+        for line in lines:
+            if line.strip().startswith("$accent   =") or line.strip().startswith("$accent ="):
+                new_lines.append(f"$accent   = rgb({hex_color})\n")
+            elif line.strip().startswith("$accentAlpha =") or line.strip().startswith("$accentAlpha   ="):
+                new_lines.append(f"$accentAlpha = {hex_color}\n")
+            else:
+                new_lines.append(line)
+
+        tmp_path = config_path + ".tmp"
+        with open(tmp_path, "w") as f:
+            f.writelines(new_lines)
+        os.replace(tmp_path, config_path)
+    except Exception as e:
+        print(f"Error updating hyprlock config: {e}", file=sys.stderr)
+
+def apply_color_to_gtk(color_info):
+    """Synchronizes GTK3 and GTK4/Libadwaita accent and dialog border colors."""
+    hex_color = color_info["hex"].lower()
+    gtk_targets = [
+        os.path.expanduser("~/.config/gtk-3.0/gtk.css"),
+        os.path.expanduser("~/.config/gtk-4.0/gtk.css"),
+        os.path.expanduser("~/.config/gtk-4.0/gtk-dark.css"),
+    ]
+    import re
+    for css_file in gtk_targets:
+        if not os.path.isfile(css_file):
+            continue
+        try:
+            with open(css_file, "r") as f:
+                content = f.read()
+
+            new_content = re.sub(
+                r"@define-color\s+accent_color\s+#[0-9a-fA-F]+;",
+                f"@define-color accent_color #{hex_color};",
+                content
+            )
+            new_content = re.sub(
+                r"@define-color\s+accent_bg_color\s+#[0-9a-fA-F]+;",
+                f"@define-color accent_bg_color #{hex_color};",
+                new_content
+            )
+
+            tmp_file = css_file + ".tmp"
+            with open(tmp_file, "w") as f:
+                f.write(new_content)
+            os.replace(tmp_file, css_file)
+        except Exception as e:
+            print(f"Error updating GTK config {css_file}: {e}", file=sys.stderr)
+
 def apply_border_to_hyprland(color_info):
-    """Updates Hyprland's active_border with glowing gradient fading to transparency and syncs OpenRGB."""
+    """Updates Hyprland's active_border with glowing gradient fading to transparency and syncs OpenRGB, hyprtoolkit, hyprlock, and GTK."""
     active_rgba = color_info["active_rgba"]
     transparent_rgba = color_info["transparent_rgba"]
 
@@ -273,6 +359,11 @@ def apply_border_to_hyprland(color_info):
 
     # Sync OpenRGB hardware lighting in background
     apply_color_to_openrgb(color_info)
+
+    # Sync hyprtoolkit, hyprlock, and GTK theme colors
+    apply_color_to_hyprtoolkit(color_info)
+    apply_color_to_hyprlock(color_info)
+    apply_color_to_gtk(color_info)
 
     # Hyprland 0.55+ Lua eval command
     lua_code = f'hl.config({{ general = {{ col = {{ active_border = {{ colors = {{ "{active_rgba}", "{transparent_rgba}" }}, angle = 45 }} }} }} }})'

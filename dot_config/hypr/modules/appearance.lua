@@ -18,7 +18,6 @@ hl.config({
             inactive_border = "rgba(222222ff)",
         },
         resize_on_border = true,
-        allow_tearing    = true,
         layout           = "dwindle",
     },
 
@@ -36,8 +35,8 @@ hl.config({
             enabled        = true,
             range          = 8,
             render_power   = 3,
-            color          = "rgba(0, 0, 0, 0.66)",
-            color_inactive = "rgba(0, 0, 0, 0)",
+            color          = "rgba(0,0,0,0.66)",
+            color_inactive = "rgba(0,0,0,0)",
         },
 
         -- ▓▒░ BLUR EFFECT
@@ -50,7 +49,7 @@ hl.config({
             brightness        = 0.8,
             vibrancy          = 1.0,
             new_optimizations = true,
-            ignore_opacity    = true,
+            ignore_opacity    = true,   -- already the default; kept explicit for clarity
             xray              = true,
             special           = true,
             popups            = true,
@@ -70,7 +69,7 @@ hl.config({
     },
 
     -- ▓▒░ XWAYLAND SCALING FIX
-    -- Prevents blurry XWayland apps on HiDPI setups
+    -- No-op at scale = 1 on this 1080p monitor; kept as insurance for a future HiDPI display
     xwayland = {
         force_zero_scaling = true,
     },

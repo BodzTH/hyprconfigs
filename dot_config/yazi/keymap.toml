@@ -2,14 +2,15 @@
 
 # ─── File Operations & Clipboard ──────────────────────────────────────────────
 
-# Copy files to system clipboard (Wayland) for browser/GUI pasting
+# Copy files to system clipboard (Wayland + text path) and yank internally
 [[mgr.prepend_keymap]]
-on   = [ "Y" ]
+on   = [ "y" ]
 run  = [
-    '''shell -- for path in "$@"; do echo "file://$path"; done | wl-copy -t text/uri-list''',
+    '''shell -- for path in %s; do echo "file://$path"; done | wl-copy -t text/uri-list 2>/dev/null; notify-send "Yazi" "Copied to clipboard"''',
+    "copy path",
     "yank"
 ]
-desc = "Copy files to system clipboard for instant browser pasting"
+desc = "Yank and copy files to system clipboard"
 
 # Paste screenshot/image from system clipboard (Wayland)
 [[mgr.prepend_keymap]]
@@ -26,7 +27,7 @@ desc = "Move selected files to system trash (recoverable)"
 # Restore selected files from trash (only works in trash folder)
 [[mgr.prepend_keymap]]
 on   = [ "R" ]
-run  = '''shell --block -- for path in "$@"; do
+run  = '''shell --block -- for path in %s; do
   name="$(basename "$path")"
   gio trash --restore "trash:///$name" && echo "✓ Restored: $name" || echo "✗ Failed: $name"
 done; echo; echo "Press Enter to continue..."; read _'''
@@ -47,13 +48,13 @@ desc = "Permanently delete selected files (irreversible)"
 # Extract archive here
 [[mgr.prepend_keymap]]
 on   = [ "e" ]
-run  = "plugin extract"
+run  = 'shell -- ya pub extract --list %s'
 desc = "Extract archive here"
 
 # Compress selection to zip
 [[mgr.prepend_keymap]]
 on   = [ "C" ]
-run  = 'shell --block -- 7z a "$(basename "$1").zip" "$@" && notify-send "Archive Created" "Finished zipping $(basename "$1")" || notify-send "Archive Failed" "Failed to zip $(basename "$1")"'
+run  = 'shell --block -- 7z a "$(basename "%s1").zip" %s && notify-send "Archive Created" "Finished zipping $(basename "%s1")" || notify-send "Archive Failed" "Failed to zip $(basename "%s1")"'
 desc = "Compress selected files to .zip archive"
 
 # ─── Terminal & App Launchers ──────────────────────────────────────────────────
@@ -64,16 +65,16 @@ on   = [ "`" ]
 run  = 'shell "$SHELL" --block'
 desc = "Drop to system shell here"
 
-# Spawn new Ghostty terminal in current directory
+# Spawn new terminal in current directory
 [[mgr.prepend_keymap]]
 on   = [ "t" ]
-run  = "shell --orphan ghostty"
-desc = "Spawn a new Ghostty terminal in current directory"
+run  = "shell --orphan kitty"
+desc = "Spawn a new terminal in current directory"
 
 # Open in default browser/application
 [[mgr.prepend_keymap]]
 on   = [ "b" ]
-run  = "shell --orphan 'xdg-open \"$@\"'"
+run  = "shell --orphan -- xdg-open %s1"
 desc = "Open selected in default browser/application"
 
 # ─── Tabs & Search ─────────────────────────────────────────────────────────────

@@ -38,22 +38,25 @@ prepend_preloaders = [
 
 [opener]
 edit = [
-    { run = '${EDITOR:-nvim} "$@"', block = true, for = "unix" },
+    { run = '${EDITOR:-nvim} %s', block = true, for = "unix" },
 ]
 play = [
-    { run = 'mpv "$@"', orphan = true, for = "unix" },
+    { run = 'mpv %s', orphan = true, for = "unix" },
+]
+swayimg = [
+    { run = 'swayimg %s', orphan = true, for = "unix" },
 ]
 open = [
-    { run = 'xdg-open "$@"', desc = "Open", for = "unix" },
+    { run = 'xdg-open %s1', desc = "Open", for = "unix" },
 ]
 virtualbox = [
-    { run = 'VirtualBox "$@"', orphan = true, desc = "VirtualBox", for = "unix" },
+    { run = 'VirtualBox %s1', orphan = true, desc = "VirtualBox", for = "unix" },
 ]
 extract = [
-    { run = 'plugin extract', desc = "Extract here", for = "unix" },
+    { run = 'ya pub extract --list %s', desc = "Extract here" },
 ]
 archive = [
-    { run = 'ark "$@"', orphan = true, desc = "Browse in Ark", for = "unix" },
+    { run = 'ark %s1', orphan = true, desc = "Browse in Ark", for = "unix" },
 ]
 
 [open]
@@ -72,7 +75,7 @@ prepend_rules = [
     # Media
     { mime = "video/*",                      use = ["play", "open"] },
     { mime = "audio/*",                      use = ["play", "open"] },
-    { mime = "image/*",                      use = ["open", "edit"] },
+    { mime = "image/*",                      use = ["swayimg", "open"] },
 
     # Documents
     { mime = "application/pdf",              use = ["open", "edit"] },

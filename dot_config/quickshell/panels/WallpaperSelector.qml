@@ -19,7 +19,6 @@ PanelWindow {
     exclusiveZone: -1
     color: "transparent"
     
-    Component.onCompleted: findProc.running = true
 
     property var wallpapers: []
     property var filteredWallpapers: {
@@ -188,6 +187,7 @@ PanelWindow {
                                 fillMode: Image.PreserveAspectCrop
                                 asynchronous: true
                                 cache: true
+                                sourceSize: Qt.size(240, 135)
                             }
                         }
                         
@@ -237,6 +237,9 @@ PanelWindow {
             wallpaperWindow.screen = scr;
         }
         searchInput.text = "";
+        if (wallpaperWindow.wallpapers.length === 0 && !findProc.running) {
+            findProc.running = true;
+        }
         wallpaperWindow.visible = true;
     }
 }

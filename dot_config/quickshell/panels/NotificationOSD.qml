@@ -265,6 +265,7 @@ Item {
                                 anchors.centerIn: parent
                                 width: 22
                                 height: 22
+                                sourceSize: Qt.size(22, 22)
                                 source: osdRoot.getIconSource(model.appIcon, model.appName)
                                 fillMode: Image.PreserveAspectFit
                                 smooth: true

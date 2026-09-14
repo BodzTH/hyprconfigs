@@ -310,6 +310,7 @@ PanelWindow {
                                     anchors.centerIn: parent
                                     width: 22
                                     height: 22
+                                    sourceSize: Qt.size(22, 22)
                                     source: notificationPopup.getIconSource(modelData.appIcon, modelData.appName)
                                     fillMode: Image.PreserveAspectFit
                                     smooth: true

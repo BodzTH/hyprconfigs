@@ -8,6 +8,7 @@ local options = {
     json = { "prettier" },
     yaml = { "prettier" },
     markdown = { "prettier" },
+    go = { "goimports", "gofmt" },
   },
 
   format_on_save = {

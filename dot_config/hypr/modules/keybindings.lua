@@ -34,6 +34,7 @@ hl.bind("Print",             hl.dsp.global("quickshell:toggle-screenshot"))
 hl.bind(m .. " + Q",             hl.dsp.window.close())
 hl.bind(m .. " + W",             hl.dsp.window.float({ action = "toggle" }))
 hl.bind(m .. " + P",             hl.dsp.window.pseudo())
+hl.bind(m .. " + J",             hl.dsp.layout("togglesplit"))   -- dwindle.preserve_split needs this bind to matter
 hl.bind("ALT + SHIFT + Return",  hl.dsp.window.fullscreen({ mode = "fullscreen",  action = "toggle" }))
 hl.bind("ALT + Return",          hl.dsp.window.fullscreen({ mode = "maximized",   action = "toggle" }))
 
@@ -48,7 +49,7 @@ hl.bind(m .. " + SHIFT + down",  hl.dsp.window.resize({ x = 0, y = 30, relative 
 hl.bind(m .. " + K", hl.dsp.exec_cmd("hyprctl switchxkblayout all next"))
 
 -- ▓▒░ CLIPBOARD MANAGEMENT
--- SUPER+V opens clipboard history via quickshell ClipboardPanel
+-- SUPER+V opens clipboard history via the quickshell ClipboardPanel
 hl.bind(m .. " + V",         hl.dsp.global("quickshell:toggle-clipboard"))
 hl.bind(m .. " + SHIFT + V", hl.dsp.exec_cmd("cliphist wipe"))
 
