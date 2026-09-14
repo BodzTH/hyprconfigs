@@ -269,6 +269,7 @@ PanelWindow {
             NetworkService.updateAll();
             scan();
             loadSaved();
+            rootRect.forceActiveFocus();
         }
     }
 
@@ -296,6 +297,20 @@ PanelWindow {
         radius: 19
         antialiasing: true
         clip: true
+        focus: true
+
+        // Escape dismisses the innermost open state first: the password/hidden
+        // overlay, then an inline delete confirmation, then the panel itself.
+        Keys.onEscapePressed: {
+            if (networkPanel.overlayActive) {
+                networkPanel.cancelOverlay();
+            } else if (networkPanel.confirmDeleteUuid) {
+                networkPanel.confirmDeleteName = "";
+                networkPanel.confirmDeleteUuid = "";
+            } else {
+                networkPanel.visible = false;
+            }
+        }
 
         // Block background click propagation
         MouseArea { anchors.fill: parent; onClicked: {} }
@@ -1095,6 +1110,7 @@ PanelWindow {
                                 selectionColor: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.35)
                                 text: networkPanel.hiddenSsid
                                 onTextChanged: networkPanel.hiddenSsid = text
+                                Keys.onEscapePressed: networkPanel.cancelOverlay()
                                 Component.onCompleted: if (networkPanel.showHiddenPrompt) forceActiveFocus()
                             }
                             Text {
@@ -1133,6 +1149,7 @@ PanelWindow {
                                     else networkPanel.pendingPassword = text;
                                 }
                                 onAccepted: networkPanel.confirmConnect()
+                                Keys.onEscapePressed: networkPanel.cancelOverlay()
                                 Component.onCompleted: if (!networkPanel.showHiddenPrompt) forceActiveFocus()
                             }
                             Text {
