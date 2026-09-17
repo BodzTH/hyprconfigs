@@ -1,37 +1,32 @@
 #!/usr/bin/env bash
-# =============================================================================
-# Automated Showcase Screenshot Generator for README
-# =============================================================================
+# Capture a clean desktop (empty workspace, focused monitor) as the README
+# preview image, then commit and push just that image.
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-OUT_DIR="$REPO_DIR/assets/screenshots"
-mkdir -p "$OUT_DIR"
+REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+IMAGE="assets/screenshots/preview.png"
 
-if ! command -v grim &>/dev/null; then
-    echo "Error: grim is required for capturing screenshots."
-    exit 1
-fi
+for cmd in grim hyprctl jq git; do
+    command -v "$cmd" >/dev/null || { echo "Error: $cmd is required." >&2; exit 1; }
+done
 
-FOCUSED_MONITOR="$(hyprctl monitors -j 2>/dev/null | jq -r '.[] | select(.focused) | .name' 2>/dev/null || echo "")"
+# Switch to an empty workspace, and always come back afterwards
+PREV=$(hyprctl activeworkspace -j | jq .id)
+trap 'hyprctl dispatch "hl.dsp.focus({ workspace = $PREV })" >/dev/null' EXIT
+hyprctl dispatch 'hl.dsp.focus({ workspace = "empty" })' >/dev/null
+sleep 1  # let the workspace animation finish
 
-if [ -z "$FOCUSED_MONITOR" ]; then
-    echo "Capturing full screen..."
-    grim "$OUT_DIR/preview.png"
-else
-    echo "Capturing focused monitor ($FOCUSED_MONITOR)..."
-    grim -o "$FOCUSED_MONITOR" "$OUT_DIR/preview.png"
-fi
-
-echo "✓ Showcase screenshot saved to: $OUT_DIR/preview.png"
+MONITOR=$(hyprctl monitors -j | jq -r '.[] | select(.focused) | .name')
+mkdir -p "$REPO_DIR/$(dirname "$IMAGE")"
+grim -o "$MONITOR" "$REPO_DIR/$IMAGE"
+echo "✓ Captured $MONITOR -> $IMAGE"
 
 # Commit only the screenshot, so unrelated uncommitted work is never swept in
-git -C "$REPO_DIR" add assets/screenshots/preview.png
-if git -C "$REPO_DIR" diff --cached --quiet -- assets/screenshots/preview.png; then
+git -C "$REPO_DIR" add "$IMAGE"
+if git -C "$REPO_DIR" diff --cached --quiet -- "$IMAGE"; then
     echo "Screenshot unchanged, nothing to commit."
     exit 0
 fi
-git -C "$REPO_DIR" commit -m "docs: update showcase screenshot" -- assets/screenshots/preview.png
+git -C "$REPO_DIR" commit -m "docs: update showcase screenshot" -- "$IMAGE"
 git -C "$REPO_DIR" push
 echo "✓ Pushed to GitHub."

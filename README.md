@@ -188,7 +188,7 @@ git push
 
 ## Updating the Showcase Screenshot
 
-Whenever you update your wallpaper or styling, run this. It captures the focused monitor, then commits and pushes just `assets/screenshots/preview.png`:
+Whenever you update your wallpaper or styling, run this. It switches to an empty workspace, captures the focused monitor, switches back, then commits and pushes just `assets/screenshots/preview.png`:
 ```bash
 ~/.local/share/chezmoi/scripts/showcase.sh
 ```
