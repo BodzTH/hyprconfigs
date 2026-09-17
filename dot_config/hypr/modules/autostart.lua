@@ -47,3 +47,9 @@ hl.on("hyprland.start", function()
     -- NOTE: hyprpaper is NOT started — awww handles wallpaper.
     -- NOTE: waybar is NOT started — quickshell is the bar.
 end)
+
+-- A reload re-applies appearance.lua's default border, wiping the wallpaper
+-- color sync_border.py set at runtime -- re-apply it after every reload.
+hl.on("config.reloaded", function()
+    hl.exec_cmd("python3 ~/.config/hypr/scripts/sync_border.py")
+end)

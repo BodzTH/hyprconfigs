@@ -61,6 +61,9 @@ hl.bind("F11", hl.dsp.exec_cmd(
 hl.bind("F12", hl.dsp.exec_cmd(
     'sh -c \'mkdir -p ~/Pictures/Screenshots; grim -g "$(slurp)" - | satty --filename - --output-filename ~/Pictures/Screenshots/$(date +%Y-%m-%d_%H-%M-%S).png\''
 ))
+-- SUPER+Print: close all windows first -- captures the desktop as the README
+-- preview and pushes it (chezmoi scripts/showcase.sh)
+hl.bind(m .. " + Print", hl.dsp.exec_cmd('sh -c \'"$(chezmoi source-path)/scripts/showcase.sh"\''))
 -- Print: Opens the quickshell ScreenshotPanel (Copy / Save / Save & Copy)
 -- (handled by the global_shortcuts bind above)
 

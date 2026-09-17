@@ -132,6 +132,7 @@ into play. **Not covered by the manifests** either (not packaged in the official
 | <kbd>SUPER</kbd> + <kbd>Shift</kbd> + <kbd>W</kbd> | Transition Wallpaper (`awww`) |
 | <kbd>F11</kbd> | Fast region screenshot → clipboard (`grim` + `slurp`) |
 | <kbd>F12</kbd> | Annotate screenshot (`grim` + `slurp` + `satty`) |
+| <kbd>SUPER</kbd> + <kbd>Print</kbd> | Update the README showcase screenshot (close all windows first) |
 
 ---
 
@@ -188,12 +189,4 @@ git push
 
 ## Updating the Showcase Screenshot
 
-Whenever you update your wallpaper or styling, run this. It switches to an empty workspace, captures the focused monitor, switches back, then commits and pushes just `assets/screenshots/preview.png`:
-```bash
-~/.local/share/chezmoi/scripts/showcase.sh
-```
-
-The bar's taskbar still shows icons for windows open on *other* workspaces. For a completely clean shot, start it detached with a delay, then close every window (including the terminal) before it fires. A notification confirms when it's pushed:
-```bash
-setsid -f ~/.local/share/chezmoi/scripts/showcase.sh 10
-```
+Close every window, then press <kbd>SUPER</kbd> + <kbd>Print</kbd>. It captures the focused monitor, commits and pushes just `assets/screenshots/preview.png`, and a notification confirms it. It refuses to capture while any window is open, so a cluttered shot never gets pushed.
