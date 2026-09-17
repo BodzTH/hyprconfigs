@@ -10,9 +10,11 @@ and updates Hyprland in real-time.
 
 import sys
 import os
+import re
 import time
 import glob
 import json
+import shutil
 import argparse
 import subprocess
 import colorsys
@@ -23,6 +25,11 @@ import numpy as np
 PLATINUM_HEX = "e5e5e5"
 PLATINUM_RGBA_ACTIVE = f"rgba({PLATINUM_HEX}ee)"
 PLATINUM_RGBA_TRANSPARENT = f"rgba({PLATINUM_HEX}00)"
+
+# Detected once — avoids a failed spawn attempt on every wallpaper change on
+# machines with no OpenRGB-controlled hardware (e.g. a laptop).
+HAS_OPENRGB = shutil.which("openrgb") is not None
+HAS_MAGICK = shutil.which("magick") is not None
 
 def get_current_wallpaper_from_awww(monitor=None):
     """Query awww or its cache to find the currently active wallpaper."""
@@ -68,6 +75,8 @@ def load_image(image_path):
 
     # For SVG files, convert to temporary PNG using magick
     if image_path.lower().endswith(".svg"):
+        if not HAS_MAGICK:
+            raise RuntimeError("magick not found; required to render SVG wallpapers")
         try:
             tmp_png = "/tmp/hypr_border_sync_svg.png"
             subprocess.run(["magick", image_path, tmp_png], check=True, timeout=2.0)
@@ -83,6 +92,8 @@ def load_image(image_path):
         return im.convert("RGB")
     except Exception as e:
         # Fallback to magick convert if PIL fails
+        if not HAS_MAGICK:
+            raise
         tmp_fallback = "/tmp/hypr_border_sync_fallback.png"
         subprocess.run(["magick", f"{image_path}[0]", tmp_fallback], check=True, timeout=2.0)
         im = Image.open(tmp_fallback)
@@ -123,7 +134,6 @@ def extract_harmonious_color(image_path):
         return {
             "mode": "PLATINUM",
             "hex": PLATINUM_HEX,
-            "led_hex": "ffffff",
             "active_rgba": PLATINUM_RGBA_ACTIVE,
             "transparent_rgba": PLATINUM_RGBA_TRANSPARENT,
             "rgb": (229, 229, 229),
@@ -161,7 +171,6 @@ def extract_harmonious_color(image_path):
         return {
             "mode": "PLATINUM",
             "hex": PLATINUM_HEX,
-            "led_hex": "ffffff",
             "active_rgba": PLATINUM_RGBA_ACTIVE,
             "transparent_rgba": PLATINUM_RGBA_TRANSPARENT,
             "rgb": (229, 229, 229),
@@ -241,6 +250,8 @@ def extract_harmonious_color(image_path):
 
 def apply_color_to_openrgb(color_info):
     """Synchronizes OpenRGB hardware lighting with the exact matching wallpaper/border color in static mode."""
+    if not HAS_OPENRGB:
+        return
     hex_color = color_info["hex"]
     try:
         subprocess.Popen(
@@ -311,7 +322,6 @@ def apply_color_to_gtk(color_info):
         os.path.expanduser("~/.config/gtk-4.0/gtk.css"),
         os.path.expanduser("~/.config/gtk-4.0/gtk-dark.css"),
     ]
-    import re
     for css_file in gtk_targets:
         if not os.path.isfile(css_file):
             continue
@@ -412,21 +422,44 @@ def sync(image_path=None, dry_run=False, verbose=False):
 
     return color_info
 
+def _awww_cache_mtime():
+    """Cheapest possible signal that something in awww's cache changed.
+
+    ~1.7us via os.stat() vs ~1.1ms to spawn `awww query` — checking this first
+    means the watcher only pays for the subprocess when something actually moved.
+    """
+    newest = 0
+    for cdir in glob.glob(os.path.expanduser("~/.cache/awww/*")):
+        try:
+            newest = max(newest, os.stat(cdir).st_mtime_ns)
+        except OSError:
+            pass
+    return newest
+
+
 def watch_mode():
-    """Monitors awww wallpaper changes and updates border in real time."""
+    """Monitors awww wallpaper changes and updates border in real time.
+
+    Not used by autostart (awww_transition.sh already re-syncs on every change) —
+    kept only for manual/debugging use, so it stays cheap when left running.
+    """
     last_wallpaper = None
+    last_cache_mtime = None
     print("Border Synchronizer Watcher active. Monitoring wallpaper changes...")
-    
+
     while True:
         try:
-            current = get_current_wallpaper_from_awww()
-            if current and current != last_wallpaper:
-                last_wallpaper = current
-                info = sync(current, dry_run=False, verbose=False)
-                print(f"Wallpaper updated: {os.path.basename(current)} -> #{info['hex']} ({info['mode']})")
+            mtime = _awww_cache_mtime()
+            if mtime != last_cache_mtime:
+                last_cache_mtime = mtime
+                current = get_current_wallpaper_from_awww()
+                if current and current != last_wallpaper:
+                    last_wallpaper = current
+                    info = sync(current, dry_run=False, verbose=False)
+                    print(f"Wallpaper updated: {os.path.basename(current)} -> #{info['hex']} ({info['mode']})")
         except Exception as e:
             print(f"Watcher error: {e}", file=sys.stderr)
-        
+
         time.sleep(0.5)
 
 def main():

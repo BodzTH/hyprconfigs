@@ -17,9 +17,6 @@ hl.curve("easeOutCirc",   { type = "bezier", points = { {0, 0.55},   {0.45, 1}  
 hl.curve("easeOutCubic",  { type = "bezier", points = { {0.33, 1},   {0.68, 1}   } })
 hl.curve("easeinoutsine", { type = "bezier", points = { {0.37, 0},   {0.63, 1}   } })
 
--- ▓▒░ SPRING CURVE
-hl.curve("easy", { type = "spring", mass = 1, stiffness = 71.2633, dampening = 15.8273644 })
-
 -- ▓▒░ WINDOW ANIMATIONS
 hl.animation({ leaf = "global",           enabled = true, speed = 10,  bezier = "default" })
 hl.animation({ leaf = "windows",          enabled = true, speed = 2,   bezier = "easeOutCubic" })

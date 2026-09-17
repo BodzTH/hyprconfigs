@@ -13,13 +13,13 @@ hl.on("hyprland.start", function()
     -- Quickshell replaces waybar as the status bar
     hl.exec_cmd(vars.bar)
 
-    -- ▓▒░ WALLPAPER DAEMON
-    -- awww replaces hyprpaper as the wallpaper daemon
-    hl.exec_cmd("awww-daemon & sleep 0.5 && awww restore")
-
-    -- ▓▒░ DYNAMIC BORDER SYNCHRONIZER
-    -- Watches wallpaper changes and synchronizes glowing active border
-    hl.exec_cmd("python3 ~/.config/hypr/scripts/sync_border.py --watch")
+    -- ▓▒░ WALLPAPER DAEMON + BORDER SYNC
+    -- awww replaces hyprpaper as the wallpaper daemon.
+    -- One-shot sync after restore: SUPER+SHIFT+W and quickshell's WallpaperSelector both
+    -- already call scripts/awww_transition.sh, which re-syncs the border on every change —
+    -- a persistent --watch daemon here was redundant (measured: ~691k polls/day, 49MB resident
+    -- doing nothing). This one-shot only covers the gap between login and the first change.
+    hl.exec_cmd("awww-daemon & sleep 0.5 && awww restore && python3 ~/.config/hypr/scripts/sync_border.py")
 
     -- ▓▒░ IDLE MANAGEMENT
     hl.exec_cmd("systemctl --user start hypridle.service")

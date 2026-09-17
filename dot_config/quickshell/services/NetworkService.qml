@@ -2,63 +2,57 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import Quickshell.Networking
 
 QtObject {
     id: self
 
-    property string type: "none" // "wifi", "ethernet", "none"
-    property string ssid: ""
-    property int signal: 0
-    property string device: ""
-    property bool wifiEnabled: true
+    // ── Live state — bound straight to the native NetworkManager module.
+    // No polling: these update the instant D-Bus reports a change.
 
-    // Ethernet specific state
-    property bool ethernetAvailable: false
-    property bool ethernetConnected: false
-    property string ethernetDevice: ""
-    property string ethernetConnectionName: ""
+    // Exposed publicly — NetworkPanel binds its WiFi list directly to
+    // wifiDevice.networks and toggles wifiDevice.scannerEnabled.
+    readonly property var wiredDevice: {
+        var d = Networking.devices;
+        return d ? d.values.find(dev => dev.type === DeviceType.Wired) || null : null;
+    }
+    readonly property var wifiDevice: {
+        var d = Networking.devices;
+        return d ? d.values.find(dev => dev.type === DeviceType.Wifi) || null : null;
+    }
+    // The WifiNetwork currently connected, if any — also used by NetworkPanel
+    // to drive the Status tab's disconnect action.
+    readonly property var activeWifiNetwork: {
+        return self.wifiDevice ? (self.wifiDevice.networks.values.find(n => n.connected) || null) : null;
+    }
 
-    // Active connection details
-    property string activeConnectionName: ""
+    readonly property bool ethernetAvailable: !!wiredDevice
+    readonly property bool ethernetConnected: wiredDevice ? wiredDevice.connected : false
+
+    readonly property bool wifiEnabled: Networking.wifiEnabled
+
+    readonly property string type: ethernetConnected ? "ethernet" : (activeWifiNetwork ? "wifi" : "none")
+    readonly property string ssid: activeWifiNetwork ? activeWifiNetwork.name : ""
+    readonly property int signal: activeWifiNetwork ? Math.round(activeWifiNetwork.signalStrength) : 0
+
+    readonly property string activeConnectionName: {
+        if (ethernetConnected && wiredDevice.network) return wiredDevice.network.name;
+        if (activeWifiNetwork) return activeWifiNetwork.name;
+        return "";
+    }
+
+    // VPN has no native equivalent — the only state left worth polling.
     property bool vpnActive: false
 
-    // Connection details (populated on demand)
+    // Connection details (populated on demand; native only exposes a single
+    // address, not gateway/DNS/IPv6, so these stay nmcli-sourced).
     property string ipAddress: ""
     property string gateway: ""
     property string dnsServers: ""
     property string ipv6Address: ""
 
-    property Process wifiToggleProc: Process {
-        command: ["sh", "-c", "if [ \"$(nmcli radio wifi)\" = \"enabled\" ]; then nmcli radio wifi off; else nmcli radio wifi on; fi"]
-    }
-
-    property Process wifiCheckProc: Process {
-        command: ["nmcli", "radio", "wifi"]
-        running: false
-        stdout: StdioCollector {
-            onStreamFinished: {
-                self.wifiEnabled = (this.text.trim() === "enabled");
-            }
-        }
-    }
-
     function toggleWifi() {
-        wifiToggleProc.running = true;
-        wifiEnabled = !wifiEnabled; // Optimistic update
-    }
-
-    function updateWifiStatus() {
-        wifiCheckProc.running = true;
-    }
-
-    // Ethernet control
-    property Process ethernetControlProc: Process {
-        running: false
-        onRunningChanged: {
-            if (!running) {
-                self.updateAll();
-            }
-        }
+        Networking.wifiEnabled = !Networking.wifiEnabled;
     }
 
     function toggleEthernet() {
@@ -70,23 +64,22 @@ QtObject {
     }
 
     function connectEthernet() {
-        var dev = self.ethernetDevice || "eno1";
-        var conn = self.ethernetConnectionName || "Wired connection 1";
-        ethernetControlProc.command = ["sh", "-c", "nmcli con up \"" + conn + "\" 2>/dev/null || nmcli dev connect " + dev];
-        ethernetControlProc.running = true;
+        if (self.wiredDevice && self.wiredDevice.network) {
+            self.wiredDevice.network.connect();
+        }
     }
 
     function disconnectEthernet() {
-        var dev = self.ethernetDevice || "eno1";
-        ethernetControlProc.command = ["nmcli", "dev", "disconnect", dev];
-        ethernetControlProc.running = true;
+        if (self.wiredDevice) {
+            self.wiredDevice.disconnect();
+        }
     }
 
     function openManager() {
         Quickshell.execDetached(["kitty", "-e", "nmtui"]);
     }
 
-    // Fetch detailed info for the active connection
+    // Fetch detailed info (IP/gateway/DNS/IPv6) for the active connection
     property Process detailsProc: Process {
         id: detailsProc
         running: false
@@ -128,7 +121,8 @@ QtObject {
         detailsProc.running = true;
     }
 
-    // Fetch all saved connections
+    // Fetch all saved connections (Saved tab) — nmcli only; native exposes
+    // no per-connection UUID/list-of-profiles API.
     property Process savedConnsProc: Process {
         id: savedConnsProc
         running: false
@@ -146,82 +140,8 @@ QtObject {
         savedConnsProc.running = true;
     }
 
-    // Process to query active connections
-    property Process wifiProc: Process {
-        command: ["sh", "-c", "nmcli -t -f active,ssid,signal dev wifi | grep '^yes' || true"]
-        running: false
-        stdout: StdioCollector {
-            onStreamFinished: {
-                var lines = this.text.trim().split("\n");
-                if (lines.length > 0 && lines[0].startsWith("yes:")) {
-                    var line = lines[0];
-                    var firstColon = line.indexOf(":");
-                    var lastColon = line.lastIndexOf(":");
-                    if (firstColon !== -1 && lastColon !== -1 && firstColon !== lastColon) {
-                        self.type = "wifi";
-                        self.ssid = line.substring(firstColon + 1, lastColon).replace(/\\:/g, ":");
-                        self.signal = parseInt(line.substring(lastColon + 1)) || 0;
-                        self.activeConnectionName = self.ssid;
-                        self.fetchConnectionDetails(self.ssid);
-                        return;
-                    }
-                }
-                if (!self.ethernetConnected) {
-                    self.type = "none";
-                    self.ssid = "Disconnected";
-                    self.signal = 0;
-                    self.activeConnectionName = "";
-                    self.ipAddress = "";
-                    self.gateway = "";
-                    self.dnsServers = "";
-                    self.ipv6Address = "";
-                }
-            }
-        }
-    }
-
-    property Process ethernetProc: Process {
-        command: ["sh", "-c", "nmcli -t -f device,type,state,connection dev | grep ':ethernet:' || true"]
-        running: false
-        stdout: StdioCollector {
-            onStreamFinished: {
-                var lines = this.text.trim().split("\n");
-                self.ethernetAvailable = false;
-                self.ethernetConnected = false;
-                for (var i = 0; i < lines.length; i++) {
-                    var line = lines[i].trim();
-                    if (!line) continue;
-                    var parts = line.split(":");
-                    if (parts.length >= 3) {
-                        self.ethernetAvailable = true;
-                        self.ethernetDevice = parts[0];
-                        if (parts[2] === "connected") {
-                            self.ethernetConnected = true;
-                            self.type = "ethernet";
-                            self.device = parts[0];
-                            self.ssid = "Ethernet";
-                            self.signal = 100;
-                            var conn = parts.slice(3).join(":").trim();
-                            if (conn) {
-                                self.activeConnectionName = conn;
-                                self.ethernetConnectionName = conn;
-                                self.fetchConnectionDetails(conn);
-                            }
-                            return;
-                        } else {
-                            if (parts.length >= 4 && parts.slice(3).join(":").trim()) {
-                                self.ethernetConnectionName = parts.slice(3).join(":").trim();
-                            }
-                        }
-                    }
-                }
-                // If ethernet is not connected, check wifi
-                self.wifiProc.running = true;
-            }
-        }
-    }
-
-    // Poll for VPN status
+    // Poll for VPN status — nothing native reports this, so it's the one
+    // thing still on a timer, and a slow one since VPN state rarely changes.
     property Process vpnProc: Process {
         command: ["sh", "-c", "nmcli -t -f name,type,active con show | grep ':vpn:yes\\|:wireguard:yes' || true"]
         running: false
@@ -233,18 +153,14 @@ QtObject {
     }
 
     function updateAll() {
-        self.ethernetProc.running = true;
-        self.updateWifiStatus();
         self.vpnProc.running = true;
     }
 
-    property Timer pollTimer: Timer {
-        interval: 5000
+    property Timer vpnPollTimer: Timer {
+        interval: 30000
         running: true
         repeat: true
         triggeredOnStart: true
-        onTriggered: {
-            self.updateAll();
-        }
+        onTriggered: self.vpnProc.running = true
     }
 }

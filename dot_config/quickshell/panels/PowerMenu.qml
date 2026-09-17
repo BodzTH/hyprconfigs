@@ -63,12 +63,15 @@ PanelWindow {
                 Quickshell.execDetached(["bash", "-c", "~/.config/scripts/keycheck.sh && faillock --reset && hyprlock"])
             } else if (selectedIndex === 1) {
                 powerMenuPopup.visible = false
-                Quickshell.execDetached(["bash", "-c", "~/.config/scripts/keycheck.sh && hyprlock & sleep 1.2 && systemctl suspend"])
+                Quickshell.execDetached(["bash", "-c", "~/.config/scripts/keycheck.sh && { hyprlock & } && sleep 1.2 && systemctl suspend"])
             } else if (selectedIndex === 2) {
+                powerMenuPopup.visible = false
                 Quickshell.execDetached(["bash", "-c", "hyprshutdown"])
             } else if (selectedIndex === 3) {
+                powerMenuPopup.visible = false
                 Quickshell.execDetached(["bash", "-c", "hyprshutdown -t 'Rebooting...' --post-cmd 'systemctl reboot'"])
             } else if (selectedIndex === 4) {
+                powerMenuPopup.visible = false
                 Quickshell.execDetached(["bash", "-c", "hyprshutdown -t 'Shutting down...' --post-cmd 'systemctl poweroff'"])
             }
         }
@@ -131,7 +134,7 @@ PanelWindow {
                 TapHandler {
                     onTapped: {
                         powerMenuPopup.visible = false
-                        Quickshell.execDetached(["bash", "-c", "~/.config/scripts/keycheck.sh && hyprlock & sleep 1.2 && systemctl suspend"])
+                        Quickshell.execDetached(["bash", "-c", "~/.config/scripts/keycheck.sh && { hyprlock & } && sleep 1.2 && systemctl suspend"])
                     }
                 }
             }
@@ -159,6 +162,7 @@ PanelWindow {
                 }
                 TapHandler {
                     onTapped: {
+                        powerMenuPopup.visible = false
                         Quickshell.execDetached(["bash", "-c", "hyprshutdown"])
                     }
                 }
@@ -187,6 +191,7 @@ PanelWindow {
                 }
                 TapHandler {
                     onTapped: {
+                        powerMenuPopup.visible = false
                         Quickshell.execDetached(["bash", "-c", "hyprshutdown -t 'Rebooting...' --post-cmd 'systemctl reboot'"])
                     }
                 }
@@ -215,6 +220,7 @@ PanelWindow {
                 }
                 TapHandler {
                     onTapped: {
+                        powerMenuPopup.visible = false
                         Quickshell.execDetached(["bash", "-c", "hyprshutdown -t 'Shutting down...' --post-cmd 'systemctl poweroff'"])
                     }
                 }

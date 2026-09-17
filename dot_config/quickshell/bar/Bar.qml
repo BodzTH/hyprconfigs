@@ -9,7 +9,6 @@ import ".."
 PanelWindow {
     id: bar
     required property var modelData
-    required property var notificationServer
 
     screen: modelData
     implicitHeight: 44
@@ -92,7 +91,7 @@ PanelWindow {
             }
         }
 
-        // RIGHT MODULE: SysMonitor, Keyboard, Audio, Mic, Network, Battery, Notification, Settings, Tray, Power
+        // RIGHT MODULE: SysMonitor, Keyboard, Audio, Mic, Network, Battery, Tray, Power
         Rectangle {
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter

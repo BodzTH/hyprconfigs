@@ -37,13 +37,6 @@ Row {
                 height: 22
                 sourceSize: Qt.size(22, 22)
                 fillMode: Image.PreserveAspectFit
-
-                // Handle load errors or fallback
-                onStatusChanged: {
-                    if (status === Image.Error) {
-                        console.log("Failed to load tray icon: " + modelData.icon);
-                    }
-                }
             }
 
             QsMenuAnchor {

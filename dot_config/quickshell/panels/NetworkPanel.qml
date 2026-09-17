@@ -5,6 +5,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Hyprland
+import Quickshell.Networking
 import ".."
 import "../services"
 
@@ -29,15 +30,19 @@ PanelWindow {
     // ── Tab state ────────────────────────────────────────────────────────────
     property int currentTab: 0  // 0=Status, 1=WiFi, 2=Saved
 
-    // ── WiFi scan state ──────────────────────────────────────────────────────
-    property var networks: []
-    property bool scanning: false
-    property string connectingSsid: ""
+    // ── WiFi list — bound live to the native device, sorted by signal ────────
+    readonly property var wifiNetworks: {
+        var dev = NetworkService.wifiDevice;
+        if (!dev) return [];
+        return dev.networks.values.slice().sort((a, b) => b.signalStrength - a.signalStrength);
+    }
+    property bool scanPulse: false // brief cosmetic spin when refresh is tapped
 
     // ── Password / hidden network overlay ────────────────────────────────────
     property bool showPasswordPrompt: false
     property bool showHiddenPrompt: false
-    property string pendingSsid: ""
+    property var pendingNetwork: null   // WifiNetwork awaiting password confirm
+    property string pendingSsid: ""     // display name for the overlay header
     property string pendingPassword: ""
     property string hiddenSsid: ""
     property string hiddenPassword: ""
@@ -52,64 +57,14 @@ PanelWindow {
     readonly property bool overlayActive: showPasswordPrompt || showHiddenPrompt
 
     // ── Processes ────────────────────────────────────────────────────────────
+    // WiFi connect/disconnect/forget now go straight through the native
+    // WifiNetwork objects (see tryConnect/forgetWifi below). Only the Saved
+    // tab (needs connection UUIDs, which the native module doesn't expose)
+    // and hidden-network connect (needs NMSettings, not QML-creatable) still
+    // shell out to nmcli, and only on demand.
 
-    property Process scanProc: Process {
+    property Process hiddenConnectProc: Process {
         running: false
-        command: ["sh", "-c",
-            "nmcli -t -f ssid,signal,security,active dev wifi list 2>/dev/null | sort -t: -k2 -rn"]
-        stdout: StdioCollector {
-            onStreamFinished: {
-                var result = [];
-                var lines = this.text.trim().split("\n");
-                for (var i = 0; i < lines.length; i++) {
-                    var line = lines[i];
-                    if (!line) continue;
-                    // split on unescaped colons
-                    var parts = line.split(/(?<!\\):/);
-                    if (parts.length < 4) continue;
-                    var ssid = parts[0].replace(/\\:/g, ":").trim();
-                    if (!ssid || ssid === "--") continue;
-                    var signal = parseInt(parts[1]) || 0;
-                    var security = parts[2].trim();
-                    var active = parts[3].trim() === "yes";
-                    var found = false;
-                    for (var j = 0; j < result.length; j++) {
-                        if (result[j].ssid === ssid) {
-                            if (signal > result[j].signal) result[j].signal = signal;
-                            if (active) result[j].connected = true;
-                            found = true; break;
-                        }
-                    }
-                    if (!found)
-                        result.push({ ssid: ssid, signal: signal, security: security, connected: active });
-                }
-                networkPanel.networks = result;
-                networkPanel.scanning = false;
-            }
-        }
-    }
-
-    property Process connectProc: Process {
-        running: false
-        onRunningChanged: {
-            if (!running) {
-                networkPanel.connectingSsid = "";
-                networkPanel.scan();
-                NetworkService.ethernetProc.running = true;
-            }
-        }
-    }
-
-    property Process disconnectProc: Process {
-        running: false
-        command: ["sh", "-c",
-            "nmcli dev disconnect $(nmcli -t -f device,state dev | grep ':connected' | grep -v loopback | head -1 | cut -d: -f1)"]
-        onRunningChanged: {
-            if (!running) {
-                networkPanel.scan();
-                NetworkService.ethernetProc.running = true;
-            }
-        }
     }
 
     property Process conUpProc: Process {
@@ -125,11 +80,6 @@ PanelWindow {
     property Process deleteProc: Process {
         running: false
         onRunningChanged: { if (!running) networkPanel.loadSaved() }
-    }
-
-    property Process forgetWifiProc: Process {
-        running: false
-        onRunningChanged: { if (!running) networkPanel.scan() }
     }
 
     Connections {
@@ -164,9 +114,17 @@ PanelWindow {
 
     // ── Actions ───────────────────────────────────────────────────────────────
 
-    function scan() {
-        scanning = true;
-        scanProc.running = true;
+    // Scanning runs continuously in the background (see onVisibleChanged)
+    // once the panel is open; refresh just gives the button a cosmetic pulse.
+    function rescan() {
+        scanPulse = true;
+        scanPulseTimer.restart();
+    }
+
+    Timer {
+        id: scanPulseTimer
+        interval: 700
+        onTriggered: networkPanel.scanPulse = false
     }
 
     function loadSaved() {
@@ -175,39 +133,35 @@ PanelWindow {
         NetworkService.fetchSavedConnections();
     }
 
-    function connectToNetwork(ssid, password) {
-        connectingSsid = ssid;
-        if (password)
-            connectProc.command = ["nmcli", "dev", "wifi", "connect", ssid, "password", password];
-        else
-            connectProc.command = ["nmcli", "dev", "wifi", "connect", ssid];
-        connectProc.running = true;
+    function connectToNetwork(network, password) {
+        if (!network) return;
+        if (password) network.connectWithPsk(password);
+        else network.connect();
     }
 
     function connectToHidden(ssid, password) {
-        connectingSsid = ssid;
         if (password)
-            connectProc.command = ["nmcli", "dev", "wifi", "connect", ssid, "password", password, "hidden", "yes"];
+            hiddenConnectProc.command = ["nmcli", "dev", "wifi", "connect", ssid, "password", password, "hidden", "yes"];
         else
-            connectProc.command = ["nmcli", "dev", "wifi", "connect", ssid, "hidden", "yes"];
-        connectProc.running = true;
+            hiddenConnectProc.command = ["nmcli", "dev", "wifi", "connect", ssid, "hidden", "yes"];
+        hiddenConnectProc.running = true;
     }
 
-    function tryConnect(ssid, security, connected) {
-        if (connected) { disconnectProc.running = true; return; }
-        if (security && security !== "--") {
-            pendingSsid = ssid;
+    function tryConnect(network) {
+        if (network.connected) { network.disconnect(); return; }
+        if (network.security !== WifiSecurityType.Open && network.security !== WifiSecurityType.Owe) {
+            pendingNetwork = network;
+            pendingSsid = network.name;
             pendingPassword = "";
             showPassword = false;
             showPasswordPrompt = true;
         } else {
-            connectToNetwork(ssid, "");
+            connectToNetwork(network, "");
         }
     }
 
-    function forgetWifi(ssid) {
-        forgetWifiProc.command = ["sh", "-c", "nmcli connection delete \"" + ssid + "\" 2>/dev/null || true"];
-        forgetWifiProc.running = true;
+    function forgetWifi(network) {
+        if (network) network.forget();
     }
 
     function activateConnection(name) {
@@ -232,13 +186,15 @@ PanelWindow {
             connectToHidden(hiddenSsid, hiddenPassword);
         } else {
             showPasswordPrompt = false;
-            connectToNetwork(pendingSsid, pendingPassword);
+            connectToNetwork(pendingNetwork, pendingPassword);
+            pendingNetwork = null;
         }
     }
 
     function cancelOverlay() {
         showPasswordPrompt = false;
         showHiddenPrompt = false;
+        pendingNetwork = null;
         pendingPassword = "";
         hiddenSsid = "";
         hiddenPassword = "";
@@ -267,9 +223,13 @@ PanelWindow {
             confirmDeleteName = "";
             confirmDeleteUuid = "";
             NetworkService.updateAll();
-            scan();
+            if (NetworkService.activeConnectionName)
+                NetworkService.fetchConnectionDetails(NetworkService.activeConnectionName);
+            if (NetworkService.wifiDevice) NetworkService.wifiDevice.scannerEnabled = true;
             loadSaved();
             rootRect.forceActiveFocus();
+        } else {
+            if (NetworkService.wifiDevice) NetworkService.wifiDevice.scannerEnabled = false;
         }
     }
 
@@ -473,8 +433,6 @@ PanelWindow {
                             TapHandler {
                                 onTapped: {
                                     networkPanel.currentTab = index;
-                                    if (index === 1 && networkPanel.networks.length === 0)
-                                        networkPanel.scan();
                                     if (index === 2)
                                         networkPanel.loadSaved();
                                 }
@@ -647,8 +605,8 @@ PanelWindow {
                         onActivated: {
                             if (NetworkService.type === "ethernet") {
                                 NetworkService.disconnectEthernet();
-                            } else {
-                                networkPanel.disconnectProc.running = true;
+                            } else if (NetworkService.activeWifiNetwork) {
+                                NetworkService.activeWifiNetwork.disconnect();
                             }
                         }
                     }
@@ -685,16 +643,16 @@ PanelWindow {
                         Behavior on color { ColorAnimation { duration: 100 } }
                         Text {
                             anchors.centerIn: parent; text: "󰑐"
-                            color: networkPanel.scanning ? Theme.accent : Theme.subtext0
+                            color: networkPanel.scanPulse ? Theme.accent : Theme.subtext0
                             font.family: Theme.fontMain; font.pixelSize: 13
                             renderType: Text.NativeRendering
                             RotationAnimator on rotation {
-                                running: networkPanel.scanning
+                                running: networkPanel.scanPulse
                                 from: 0; to: 360; duration: 1000; loops: Animation.Infinite
                             }
                         }
                         HoverHandler { id: scanBtnHover }
-                        TapHandler { onTapped: { if (!networkPanel.scanning) networkPanel.scan() } }
+                        TapHandler { onTapped: networkPanel.rescan() }
                     }
                 }
 
@@ -715,29 +673,24 @@ PanelWindow {
                     visible: NetworkService.wifiEnabled
 
                     Text {
-                        Layout.fillWidth: true; text: "Scanning…"
-                        color: Theme.subtext0; font.family: Theme.fontMain; font.pixelSize: 10
-                        horizontalAlignment: Text.AlignHCenter
-                        visible: networkPanel.scanning && networkPanel.networks.length === 0
-                        renderType: Text.NativeRendering
-                    }
-                    Text {
                         Layout.fillWidth: true; text: "No networks found"
                         color: Theme.subtext0; font.family: Theme.fontMain; font.pixelSize: 10
                         horizontalAlignment: Text.AlignHCenter
-                        visible: !networkPanel.scanning && networkPanel.networks.length === 0
+                        visible: networkPanel.wifiNetworks.length === 0
                         renderType: Text.NativeRendering
                     }
 
                     Repeater {
-                        model: networkPanel.networks
+                        model: networkPanel.wifiNetworks
 
                         delegate: Rectangle {
                             id: wifiRow
                             Layout.fillWidth: true; height: 38; radius: 5
 
                             readonly property bool isConnected: modelData.connected
-                            readonly property bool isConnecting: networkPanel.connectingSsid === modelData.ssid
+                            readonly property bool isConnecting: modelData.stateChanging
+                            readonly property bool isOpen: modelData.security === WifiSecurityType.Open
+                                || modelData.security === WifiSecurityType.Owe
 
                             color: isConnected
                                 ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, wifiRowHover.hovered ? 0.18 : 0.10)
@@ -753,7 +706,7 @@ PanelWindow {
                                 spacing: 8
 
                                 Text {
-                                    text: networkPanel.signalIcon(modelData.signal)
+                                    text: networkPanel.signalIcon(Math.round(modelData.signalStrength))
                                     color: wifiRow.isConnected ? Theme.accent : Theme.subtext0
                                     font.family: Theme.fontMain; font.pixelSize: 13
                                     renderType: Text.NativeRendering
@@ -762,7 +715,7 @@ PanelWindow {
                                 ColumnLayout {
                                     Layout.fillWidth: true; spacing: 1
                                     Text {
-                                        text: modelData.ssid; color: Theme.text
+                                        text: modelData.name; color: Theme.text
                                         font.family: Theme.fontMain; font.pixelSize: 10
                                         font.weight: wifiRow.isConnected ? Font.Bold : Font.Normal
                                         elide: Text.ElideRight; Layout.maximumWidth: 150
@@ -770,8 +723,8 @@ PanelWindow {
                                     }
                                     Text {
                                         text: wifiRow.isConnected ? "Connected"
-                                            : (modelData.security && modelData.security !== "--")
-                                                ? "󰌾 " + modelData.security : "Open"
+                                            : wifiRow.isOpen ? "Open"
+                                                : "󰌾 " + WifiSecurityType.toString(modelData.security)
                                         color: wifiRow.isConnected ? Theme.accent : Theme.subtext0
                                         font.family: Theme.fontMain; font.pixelSize: 8
                                         renderType: Text.NativeRendering
@@ -779,7 +732,7 @@ PanelWindow {
                                 }
 
                                 Text {
-                                    text: modelData.signal + "%"; color: Theme.subtext0
+                                    text: Math.round(modelData.signalStrength) + "%"; color: Theme.subtext0
                                     font.family: Theme.fontMain; font.pixelSize: 8
                                     renderType: Text.NativeRendering
                                 }
@@ -811,7 +764,7 @@ PanelWindow {
                                         renderType: Text.NativeRendering
                                     }
                                     HoverHandler { id: forgetHover }
-                                    TapHandler { onTapped: networkPanel.forgetWifi(modelData.ssid) }
+                                    TapHandler { onTapped: networkPanel.forgetWifi(modelData) }
                                 }
 
                                 // Disconnect (on connected row)
@@ -828,7 +781,7 @@ PanelWindow {
                                         renderType: Text.NativeRendering
                                     }
                                     HoverHandler { id: discRowHover }
-                                    TapHandler { onTapped: networkPanel.disconnectProc.running = true }
+                                    TapHandler { onTapped: modelData.disconnect() }
                                 }
                             }
 
@@ -836,7 +789,7 @@ PanelWindow {
                             TapHandler {
                                 onTapped: {
                                     if (!wifiRow.isConnected && !wifiRow.isConnecting)
-                                        networkPanel.tryConnect(modelData.ssid, modelData.security, modelData.connected)
+                                        networkPanel.tryConnect(modelData)
                                 }
                             }
                         }

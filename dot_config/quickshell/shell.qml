@@ -13,9 +13,7 @@ ShellRoot {
 
     signal togglePowerMenu()
     signal toggleBarFocus()
-    signal toggleQuickSettings()
     signal toggleCalendar()
-    signal toggleNotifications()
     signal toggleNetwork()
     signal toggleWallpaperSelector()
 
@@ -45,9 +43,7 @@ ShellRoot {
     }
 
     onTogglePowerMenu: togglePanel(powerMenuPanel)
-    onToggleQuickSettings: togglePanel(quickSettingsPanel)
     onToggleCalendar: togglePanel(calendarPanel)
-    onToggleNotifications: togglePanel(notificationPanel)
     onToggleNetwork: togglePanel(networkPanel)
     onToggleWallpaperSelector: wallpaperSelectorPanel.toggle(getFocusedScreen())
 
@@ -99,7 +95,6 @@ ShellRoot {
 
         Bar {
             modelData: modelData
-            notificationServer: notificationServer
         }
     }
 
@@ -127,17 +122,8 @@ ShellRoot {
         id: powerMenuPanel
     }
 
-    QuickSettings {
-        id: quickSettingsPanel
-    }
-
     CalendarPanel {
         id: calendarPanel
-    }
-
-    NotificationPanel {
-        id: notificationPanel
-        notificationServer: notificationServer
     }
 
     NetworkPanel {

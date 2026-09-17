@@ -18,25 +18,47 @@ QtObject {
     property var _prevTx: ({})
     property real _lastNetTime: 0
 
+    property real _prevCpuIdle: -1
+    property real _prevCpuTotal: -1
+
     property Process monitorProc: Process {
-        command: ["sh", "-c", "cpu=$(top -bn1 | grep 'Cpu(s)' | awk '{print 100 - $8}'); mem=$(free -m | awk '/Mem:/ {printf \"%.1f %.1f %d\", $3/1024, $2/1024, ($3/$2)*100}'); echo \"$cpu $mem\""]
+        command: ["cat", "/proc/stat", "/proc/meminfo"]
         running: false
         stdout: StdioCollector {
             onStreamFinished: {
-                var output = this.text.trim();
-                var parts = output.split(/\s+/);
-                if (parts.length >= 4) {
-                    self.cpuUsage = Math.round(parseFloat(parts[0])) || 0;
-                    self.memUsed = parts[1] + "G";
-                    self.memTotal = parts[2] + "G";
-                    self.memUsage = parseInt(parts[3]) || 0;
-                } else if (parts.length >= 2) {
-                    self.cpuUsage = Math.round(parseFloat(parts[0])) || 0;
-                    self.memUsage = Math.round(parseFloat(parts[1])) || 0;
+                var lines = this.text.split("\n");
+                for (var i = 0; i < lines.length; i++) {
+                    var line = lines[i];
+                    if (line.indexOf("cpu ") === 0) {
+                        // "cpu  user nice system idle iowait irq softirq steal ..."
+                        var f = line.trim().split(/\s+/).slice(1).map(Number);
+                        var idle = (f[3] || 0) + (f[4] || 0);
+                        var total = f.reduce(function(a, b) { return a + b; }, 0);
+                        if (self._prevCpuTotal >= 0) {
+                            var idleDelta = idle - self._prevCpuIdle;
+                            var totalDelta = total - self._prevCpuTotal;
+                            if (totalDelta > 0) {
+                                self.cpuUsage = Math.round(100 * (1 - idleDelta / totalDelta)) || 0;
+                            }
+                        }
+                        self._prevCpuIdle = idle;
+                        self._prevCpuTotal = total;
+                    } else if (line.indexOf("MemTotal:") === 0) {
+                        self._memTotalKb = parseInt(line.match(/\d+/)[0]) || 0;
+                    } else if (line.indexOf("MemAvailable:") === 0) {
+                        var availKb = parseInt(line.match(/\d+/)[0]) || 0;
+                        if (self._memTotalKb > 0) {
+                            var usedKb = self._memTotalKb - availKb;
+                            self.memUsed = (usedKb / 1048576).toFixed(1) + "G";
+                            self.memTotal = (self._memTotalKb / 1048576).toFixed(1) + "G";
+                            self.memUsage = Math.round((usedKb / self._memTotalKb) * 100) || 0;
+                        }
+                    }
                 }
             }
         }
     }
+    property real _memTotalKb: 0
 
     property Timer pollTimer: Timer {
         interval: 2000

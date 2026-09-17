@@ -8,9 +8,6 @@ return {
   -- These are some examples, uncomment them if you want to see them work!
   {
     "neovim/nvim-lspconfig",
-    dependencies = {
-      "williamboman/mason-lspconfig.nvim",
-    },
     config = function()
       require "configs.lspconfig"
     end,
@@ -20,9 +17,11 @@ return {
     "nvim-treesitter/nvim-treesitter",
     opts = {
       ensure_installed = {
-        "vim", "lua", "vimdoc",
-        "html", "css",
-        "go", "gomod", "gosum", "gowork",
+        "vim", "vimdoc", "query",
+        "lua", "luadoc",
+        "json", "jsonc", "yaml", "toml",
+        "markdown", "markdown_inline",
+        "bash", "diff", "gitcommit",
       },
     },
   },

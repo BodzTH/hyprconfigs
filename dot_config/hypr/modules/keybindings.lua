@@ -14,9 +14,8 @@ hl.bind(m .. " + T", hl.dsp.exec_cmd(vars.terminal))
 hl.bind(m .. " + E", hl.dsp.exec_cmd(vars.fileManager))
 hl.bind(m .. " + F", hl.dsp.exec_cmd(vars.browser))
 hl.bind(m .. " + C", hl.dsp.exec_cmd(vars.terminal_editor))     -- kitty -e nvim (NvChad)
-hl.bind(m .. " + SHIFT + C", hl.dsp.exec_cmd(vars.editor))      -- neovim (GUI)
-hl.bind(m .. " + X", hl.dsp.exec_cmd(vars.calculator))
 hl.bind(m .. " + O", hl.dsp.exec_cmd(vars.notingApp))
+hl.bind(m .. " + D", hl.dsp.exec_cmd(vars.discord))
 hl.bind(m .. " + U", hl.dsp.exec_cmd(vars.updater))              -- CachyOS system updater
 hl.bind(m .. " + G", hl.dsp.exec_cmd(vars.antigravity))
 
@@ -108,11 +107,47 @@ hl.bind("XF86AudioPause", hl.dsp.exec_cmd("playerctl play-pause"), { locked = tr
 hl.bind("XF86AudioPlay",  hl.dsp.exec_cmd("playerctl play-pause"), { locked = true })
 hl.bind("XF86AudioPrev",  hl.dsp.exec_cmd("playerctl previous"),   { locked = true })
 
--- ▓▒░ GAMING MODE TOGGLE (SUPER + F5)
-hl.bind(m .. " + F5", hl.dsp.exec_cmd("~/.config/hypr/scripts/gaming-mode.sh"))
-
 -- ▓▒░ WALLPAPER TRANSITION (SUPER + SHIFT + W)
 hl.bind(m .. " + SHIFT + W", hl.dsp.exec_cmd("~/.config/hypr/scripts/awww_transition.sh"))
 
 -- ▓▒░ OPENRGB COLOR PICKER (SUPER + SHIFT + P)
 hl.bind(m .. " + SHIFT + P", hl.dsp.exec_cmd("~/.config/hypr/scripts/pick_rgb.fish"))
+
+-- ▓▒░ SESSION LOCK
+-- No lock keybind existed before — hyprlock was only reachable via hypridle's timers.
+hl.bind(m .. " + L", hl.dsp.exec_cmd("pidof hyprlock || hyprlock --grace 1"),
+    { description = "Lock the screen" })
+
+-- Laptop lid switch — a silent no-op on machines with no lid device.
+-- Verify the exact name with `hyprctl devices` if it doesn't fire.
+hl.bind("switch:on:Lid Switch", hl.dsp.exec_cmd("pidof hyprlock || hyprlock --grace 1"),
+    { locked = true, description = "Lock on lid close" })
+
+-- ▓▒░ WINDOW MOVE (direction) — SUPER+SHIFT+arrows stays resize, unchanged
+hl.bind(m .. " + CTRL + left",  hl.dsp.window.move({ direction = "l" }), { description = "Move window left" })
+hl.bind(m .. " + CTRL + right", hl.dsp.window.move({ direction = "r" }), { description = "Move window right" })
+hl.bind(m .. " + CTRL + up",    hl.dsp.window.move({ direction = "u" }), { description = "Move window up" })
+hl.bind(m .. " + CTRL + down",  hl.dsp.window.move({ direction = "d" }), { description = "Move window down" })
+
+-- ▓▒░ MULTI-MONITOR (matters once a laptop is docked)
+hl.bind(m .. " + ALT + left",  hl.dsp.focus({ monitor = "-1" }), { description = "Focus previous monitor" })
+hl.bind(m .. " + ALT + right", hl.dsp.focus({ monitor = "+1" }), { description = "Focus next monitor" })
+hl.bind(m .. " + ALT + SHIFT + left",  hl.dsp.window.move({ monitor = "-1" }), { description = "Move window to previous monitor" })
+hl.bind(m .. " + ALT + SHIFT + right", hl.dsp.window.move({ monitor = "+1" }), { description = "Move window to next monitor" })
+
+-- ▓▒░ WORKSPACE CYCLING (keyboard)
+hl.bind(m .. " + bracketleft",  hl.dsp.focus({ workspace = "e-1" }), { description = "Previous workspace" })
+hl.bind(m .. " + bracketright", hl.dsp.focus({ workspace = "e+1" }), { description = "Next workspace" })
+
+-- ▓▒░ WINDOW UTILITIES
+hl.bind(m .. " + Tab",           hl.dsp.window.cycle_next(),        { description = "Cycle to next window" })
+hl.bind(m .. " + SHIFT + Return", hl.dsp.window.center(),           { description = "Center floating window" })
+hl.bind(m .. " + SHIFT + Space",  hl.dsp.window.pin(),              { description = "Pin window across workspaces" })
+hl.bind(m .. " + CTRL + Q",       hl.dsp.window.kill(),             { description = "Force-kill window (SIGKILL)" })
+hl.bind(m .. " + CTRL + G",       hl.dsp.group.toggle(),            { description = "Toggle window group (tabs)" })
+
+-- ▓▒░ COLOR PICKER (SUPER + I) — hyprpicker is installed but was unbound
+hl.bind(m .. " + I", hl.dsp.exec_cmd("hyprpicker -a"), { description = "Pick a color to clipboard" })
+
+-- ▓▒░ RELOAD CONFIG
+hl.bind(m .. " + SHIFT + R", hl.dsp.exec_cmd("hyprctl reload"), { description = "Reload Hyprland config" })

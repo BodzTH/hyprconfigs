@@ -4,6 +4,7 @@ import Quickshell
 import Quickshell.Wayland
 import Quickshell.Services.Notifications as Notifs
 import ".."
+import "../services"
 
 // This component lives directly in ShellRoot (not inside Variants).
 // It listens for the onNotification signal and manages a list of
@@ -18,21 +19,26 @@ Item {
     property var popups: []
     property int nextNotifId: 0
 
+    // Matches `key` as a whole word inside `str` — unlike includes(), "sh"
+    // can't match inside "finished" and "tor" can't match inside "editor".
+    function hasWord(str, key) {
+        return new RegExp("\\b" + key + "\\b").test(str);
+    }
+
     function getIconSource(iconStr, appName) {
-        if (!iconStr) return "";
-        if (iconStr.startsWith("/") || iconStr.startsWith("file://")) {
-            return iconStr;
+        if (iconStr) {
+            if (iconStr.startsWith("/") || iconStr.startsWith("file://")) {
+                return iconStr;
+            }
+            if (Quickshell.hasThemeIcon(iconStr)) {
+                return "image://icon/" + iconStr;
+            }
         }
-        var lower = (iconStr + " " + (appName || "")).toLowerCase();
-        // Skip CLI/generic names that don't have XDG icon assets and would produce checkerboards
-        if (lower.includes("notify-send") || lower.includes("bash") || lower.includes("sh") ||
-            lower.includes("zsh") || lower.includes("python") || lower.includes("curl") ||
-            lower.includes("wget") || lower.includes("quickshell") || lower.includes("hyprland") ||
-            lower.includes("unknown") || lower.includes("dialog-information")) {
-            return "";
-        }
-        if (iconStr && iconStr.length > 0) {
-            return "image://icon/" + iconStr;
+        // Fall back to the sender's real desktop entry (recovers a correct
+        // icon for e.g. notify-send, which reports no usable icon name).
+        var entry = DesktopEntries.heuristicLookup(appName || "");
+        if (entry && entry.icon) {
+            return entry.icon.startsWith("/") ? entry.icon : "image://icon/" + entry.icon;
         }
         return "";
     }
@@ -45,69 +51,55 @@ Item {
     }
 
     function getAppCategoryGlyph(name, summary) {
-        var str = ((name || "") + " " + (summary || "")).toLowerCase();
-        
+        // Matched on the app name only — notification body text (summary) is
+        // arbitrary and previously caused false matches (e.g. "Tutorial" ~ "tor").
+        var str = (name || "").toLowerCase();
+
         // Terminals, CLI, Shell, notify-send
-        if (str.includes("notify-send") || str.includes("ghostty") || str.includes("kitty") ||
-            str.includes("alacritty") || str.includes("foot") || str.includes("wezterm") ||
-            str.includes("terminal") || str.includes("konsole") || str.includes("xterm") ||
-            str.includes("bash") || str.includes("zsh") || str.includes("sh") ||
-            str.includes("python") || str.includes("node") || str.includes("cargo") ||
-            str.includes("pacman") || str.includes("yay") || str.includes("paru") ||
-            str.includes("git") || str.includes("make") || str.includes("gcc")) {
+        if (["notify-send", "ghostty", "kitty", "alacritty", "foot", "wezterm", "terminal",
+             "konsole", "xterm", "bash", "zsh", "python", "node", "cargo", "pacman", "yay",
+             "paru", "git", "make", "gcc"].some(k => hasWord(str, k))) {
             return "󰆍"; // Terminal icon
         }
 
         // Web Browsers
-        if (str.includes("firefox") || str.includes("chrome") || str.includes("chromium") ||
-            str.includes("brave") || str.includes("zen") || str.includes("edge") ||
-            str.includes("browser") || str.includes("opera") || str.includes("vivaldi") ||
-            str.includes("safari") || str.includes("tor")) {
+        if (["firefox", "chrome", "chromium", "brave", "zen", "edge", "browser", "opera",
+             "vivaldi", "safari", "tor"].some(k => hasWord(str, k))) {
             return "󰖟"; // Browser globe
         }
 
         // Chat & Social
-        if (str.includes("discord") || str.includes("vesktop") || str.includes("webcord") ||
-            str.includes("telegram") || str.includes("signal") || str.includes("slack") ||
-            str.includes("element") || str.includes("whatsapp") || str.includes("matrix") ||
-            str.includes("teams") || str.includes("chat")) {
+        if (["discord", "vesktop", "webcord", "telegram", "signal", "slack", "element",
+             "whatsapp", "matrix", "teams"].some(k => hasWord(str, k))) {
             return "󰭹"; // Message bubble
         }
 
         // Music & Media
-        if (str.includes("spotify") || str.includes("music") || str.includes("amberol") ||
-            str.includes("mpv") || str.includes("vlc") || str.includes("rhythmbox") ||
-            str.includes("cider") || str.includes("audio") || str.includes("sound") ||
-            str.includes("track") || str.includes("song")) {
+        if (["spotify", "music", "amberol", "mpv", "vlc", "rhythmbox", "cider"].some(k => hasWord(str, k))) {
             return "󰝚"; // Music note
         }
 
         // Code & Text Editors
-        if (str.includes("code") || str.includes("vscodium") || str.includes("cursor") ||
-            str.includes("neovim") || str.includes("nvim") || str.includes("emacs") ||
-            str.includes("vim") || str.includes("zed") || str.includes("sublime") ||
-            str.includes("ide") || str.includes("editor")) {
+        if (["vscodium", "cursor", "neovim", "nvim", "emacs", "vim", "zed", "sublime",
+             "editor"].some(k => hasWord(str, k))) {
             return "󰅩"; // Code brackets
         }
 
         // Mail & Calendar
-        if (str.includes("mail") || str.includes("thunderbird") || str.includes("evolution") ||
-            str.includes("geary") || str.includes("calendar") || str.includes("korganizer") ||
-            str.includes("email") || str.includes("inbox")) {
+        if (["mail", "thunderbird", "evolution", "geary", "calendar", "korganizer", "email",
+             "inbox"].some(k => hasWord(str, k))) {
             return "󰇮"; // Mail / Inbox
         }
 
         // Screenshots & Graphics
-        if (str.includes("screenshot") || str.includes("grim") || str.includes("slurp") ||
-            str.includes("flameshot") || str.includes("gimp") || str.includes("inkscape") ||
-            str.includes("krita") || str.includes("blender") || str.includes("image")) {
+        if (["screenshot", "grim", "slurp", "flameshot", "gimp", "inkscape", "krita",
+             "blender"].some(k => hasWord(str, k))) {
             return "󰹑"; // Screenshot / Image
         }
 
         // Files & Downloads
-        if (str.includes("thunar") || str.includes("nautilus") || str.includes("dolphin") ||
-            str.includes("pcmanfm") || str.includes("aria2") || str.includes("qbittorrent") ||
-            str.includes("transmission") || str.includes("download") || str.includes("file")) {
+        if (["thunar", "nautilus", "dolphin", "pcmanfm", "aria2", "qbittorrent",
+             "transmission", "download"].some(k => hasWord(str, k))) {
             return "󰉋"; // Folder
         }
 
@@ -125,7 +117,10 @@ Item {
     Connections {
         target: notificationServer
         function onNotification(notification) {
-            console.log("[OSD] Received notification: " + notification.summary);
+            // Do Not Disturb: keep the notification in history (handled by
+            // notificationServer), just don't pop up an OSD card for it.
+            if (DndService.isEnabled) return;
+
             // Add to our popup list
             var entry = {
                 "notifId": osdRoot.nextNotifId++,
@@ -152,25 +147,28 @@ Item {
             running: true
             repeat: false
             onTriggered: {
-                osdRoot.removePopup(targetNotif);
+                osdRoot.removePopup(targetNotif.notifId);
                 destroy();
             }
         }
     }
 
     /**
-     * Removes a notification popup entry from both the popupModel and local popups list.
-     * @param {object} entry - The notification entry containing the target notifId to remove.
+     * Removes a notification popup by id from both the popupModel and local popups list,
+     * and dismisses the underlying Notification so the server stops tracking it.
+     * @param {int} notifId - The id of the popup entry to remove.
      */
-    function removePopup(entry) {
+    function removePopup(notifId) {
+        var tracked = osdRoot.popups.find(p => p.notifId === notifId);
         for (var i = 0; i < popupModel.count; i++) {
-            if (popupModel.get(i).notifId === entry.notifId) {
+            if (popupModel.get(i).notifId === notifId) {
                 popupModel.remove(i);
                 break;
             }
         }
         // Use functional filter array helper instead of manual array copying loop
-        osdRoot.popups = osdRoot.popups.filter(p => p.notifId !== entry.notifId);
+        osdRoot.popups = osdRoot.popups.filter(p => p.notifId !== notifId);
+        if (tracked && tracked.notif) tracked.notif.dismiss();
     }
 
     ListModel {
@@ -345,7 +343,7 @@ Item {
                     MouseArea {
                         anchors.fill: parent
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: popupModel.remove(index)
+                        onClicked: osdRoot.removePopup(model.notifId)
                     }
                 }
             }

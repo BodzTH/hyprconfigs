@@ -14,6 +14,17 @@ hl.config({
         kb_layout    = "us,ara",   -- Arabic + US layout; SUPER+K switches between them
         follow_mouse = 1,
         sensitivity  = 0,          -- -1.0 to 1.0, 0 = no modification
+
+        -- Ignored entirely on machines with no touchpad (e.g. the desktop) —
+        -- safe to keep here so the same config covers a laptop too.
+        touchpad = {
+            natural_scroll       = true,
+            tap_to_click         = true,
+            disable_while_typing = true,
+            clickfinger_behavior = true,  -- 1/2/3 fingers = LMB/RMB/MMB, ignores click location
+            drag_lock            = 1,
+            scroll_factor        = 0.8,
+        },
     },
     cursor = {
         warp_on_change_workspace = 0,     -- Don't teleport cursor on workspace switch
@@ -25,12 +36,6 @@ hl.config({
 
 -- ▓▒░ GESTURES CONFIGURATION
 -- See: https://wiki.hypr.land/Configuring/Advanced-and-Cool/Gestures/
-hl.gesture({
-    fingers   = 3,
-    direction = "vertical",
-    action    = "workspace",
-})
-
 hl.gesture({
     fingers   = 3,
     direction = "horizontal",
