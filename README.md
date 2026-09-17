@@ -68,7 +68,11 @@ Create `~/.config/hypr/hosts/<your-hostname>.lua`:
 ```lua
 return {
     monitors = {
-        { output = "eDP-1", mode = "1920x1200@60Hz", position = "0x0", scale = 1 },
+        -- "preferred" picks the panel's native mode -- no need to hardcode a
+        -- resolution/refresh rate you'd have to look up per machine.
+        { output = "eDP-1", mode = "preferred", position = "auto", scale = 1 },
+        -- Catch-all: any docked/external display, auto-placed to the right.
+        { output = "",      mode = "preferred", position = "auto", scale = 1 },
     },
     apps = {},
     devices = {
@@ -97,7 +101,7 @@ Packages are split into logical manifests in `packages/`:
 | `40-terminals.txt` | Ghostty and Kitty |
 | `50-fonts.txt` | Adwaita, Cantarell, Noto, Cascadia Code Nerd Font |
 | `60-audio-media.txt` | Pipewire, Wireplumber, ALSA, GStreamer codecs |
-| `70-theming.txt` | Kvantum, Qt5ct, Qt6ct, Nwg-look, GTK stylesheets |
+| `70-theming.txt` | Kvantum, Qt6ct, Nwg-look, GTK stylesheets |
 | `80-gpu-amd.txt` / `80-gpu-intel.txt` / `80-gpu-nvidia.txt` | GPU driver stack — `bootstrap.sh` installs only the one matching the detected vendor |
 | `90-networking.txt` | NetworkManager, Bluetooth, OpenSSH, UFW |
 | `95-extra.txt` | Spellcheck, mail, and account-services supplementary utilities |
