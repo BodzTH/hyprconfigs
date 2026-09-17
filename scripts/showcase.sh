@@ -25,4 +25,13 @@ else
 fi
 
 echo "✓ Showcase screenshot saved to: $OUT_DIR/preview.png"
-echo "  Commit and push to GitHub to update your README."
+
+# Commit only the screenshot, so unrelated uncommitted work is never swept in
+git -C "$REPO_DIR" add assets/screenshots/preview.png
+if git -C "$REPO_DIR" diff --cached --quiet -- assets/screenshots/preview.png; then
+    echo "Screenshot unchanged, nothing to commit."
+    exit 0
+fi
+git -C "$REPO_DIR" commit -m "docs: update showcase screenshot" -- assets/screenshots/preview.png
+git -C "$REPO_DIR" push
+echo "✓ Pushed to GitHub."
