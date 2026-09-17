@@ -82,8 +82,8 @@ return {
 ```
 
 ### 2. Environment Variables & GPU Profiles (`~/.config/uwsm/`)
-UWSM environment files are managed with Chezmoi Go templates (`dot_config/uwsm/env.tmpl` and `dot_config/uwsm/env-hyprland.tmpl`). The GPU vendor is detected automatically at `chezmoi init` time by reading `/sys/class/drm/*/device/vendor` (discrete beats integrated on hybrid setups); it's cached in `~/.config/chezmoi/chezmoi.toml`, so re-run `chezmoi init` after swapping GPUs.
-- **AMD**: Activates RADV, `radeonsi`, DXVK device filter, and dual-GPU AQ_DRM_DEVICES.
+The UWSM environment file is a Chezmoi Go template (`dot_config/uwsm/env.tmpl`). `AQ_DRM_DEVICES` is deliberately left unset — aquamarine picks the primary GPU on its own, and a hand-set list breaks easily (it's `:`-separated, so `/dev/dri/by-path/pci-0000:03:00.0-card` paths can't be used, and `/dev/dri/cardN` numbers can swap between boots). The GPU vendor is detected automatically at `chezmoi init` time by reading `/sys/class/drm/*/device/vendor` (discrete beats integrated on hybrid setups); it's cached in `~/.config/chezmoi/chezmoi.toml`, so re-run `chezmoi init` after swapping GPUs.
+- **AMD**: Activates RADV, `radeonsi`, and the DXVK device filter.
 - **NVIDIA**: Activates `nvidia-drm`, `__GLX_VENDOR_LIBRARY_NAME=nvidia`, and `NVD_BACKEND=direct`.
 - **Intel**: Activates `iHD` VA-API drivers.
 

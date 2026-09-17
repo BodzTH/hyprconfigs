@@ -1,7 +1,0 @@
-{{ if eq .hostname "hyprcachyos" -}}
-# Multi-GPU setup (Discrete RX 7700 XT primary, Raphael iGPU secondary).
-# Using /dev/dri/by-path/ symlinks, not /dev/dri/card*, because card numbers
-# are reassigned at boot and are not a stable way to pick a GPU (Hyprland wiki,
-# Configuring/Advanced-and-Cool/Multi-GPU). by-path is stable across reboots.
-export AQ_DRM_DEVICES="/dev/dri/by-path/pci-0000:03:00.0-card:/dev/dri/by-path/pci-0000:0e:00.0-card"
-{{ end -}}
