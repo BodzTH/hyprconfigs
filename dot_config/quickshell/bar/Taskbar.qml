@@ -13,7 +13,7 @@ Row {
     // window title, which is page/document content an app doesn't control.
     // Everything else is resolved via the real desktop entry.
     //
-    // Both entries below exist because /home/bodz/.config/hypr launches these
+    // Both entries below exist because hypr/modules/variables.lua launches these
     // with a custom --class, so their appId isn't "kitty" and has no matching
     // desktop entry for heuristicLookup to find:
     //   - modules/variables.lua: fileManager = "kitty --class=org.yazi.fm ..."
@@ -93,7 +93,7 @@ Row {
     function getAppIcon(title, appId) {
         const id = appId ? appId.toLowerCase() : "";
         if (id.includes("antigravity")) {
-            return "file:///home/bodz/Apps/Antigravity/Google-Antigravity-Icon-White.png";
+            return "file://" + Quickshell.env("HOME") + "/Apps/Antigravity/Google-Antigravity-Icon-White.png";
         }
 
         const iconName = getAppIconName(title, appId);

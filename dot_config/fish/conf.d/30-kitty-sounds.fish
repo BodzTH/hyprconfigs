@@ -9,16 +9,16 @@ end
 
 if test "$fish_enable_kitty_sounds" = true; and status is-interactive; and set -q KITTY_WINDOW_ID; and type -q mpv
     # Play startup sound
-    if test -f /home/bodz/.config/kitty/Kiss.m4a
-        mpv --no-video /home/bodz/.config/kitty/Kiss.m4a >/dev/null 2>&1 &
+    if test -f "$HOME/.config/kitty/Kiss.m4a"
+        mpv --no-video "$HOME/.config/kitty/Kiss.m4a" >/dev/null 2>&1 &
     end
 
     # Shutdown sound player function
     function play_shutdown_sound
         if not set -q _shutdown_sound_played
             set -g _shutdown_sound_played 1
-            if test -f /home/bodz/.config/kitty/windows-xp-shutdown.mp3
-                mpv --no-video /home/bodz/.config/kitty/windows-xp-shutdown.mp3 >/dev/null 2>&1
+            if test -f "$HOME/.config/kitty/windows-xp-shutdown.mp3"
+                mpv --no-video "$HOME/.config/kitty/windows-xp-shutdown.mp3" >/dev/null 2>&1
             end
         end
     end

@@ -12,7 +12,7 @@ local vars = {}
 vars.mainMod = "SUPER"                    -- Windows key as primary modifier
 
 -- ▓▒░ DEFAULT APPLICATION VARIABLES
-local home = os.getenv("HOME") or ("/home/" .. (os.getenv("USER") or "bodz"))
+local home = os.getenv("HOME") or ("/home/" .. (os.getenv("USER") or "user"))
 vars.terminal        = "kitty"
 vars.fileManager     = "kitty --class=org.yazi.fm -e fish -c 'y'"   -- yazi via kitty
 vars.browser         = "firefox"

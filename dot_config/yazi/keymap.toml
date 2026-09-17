@@ -169,7 +169,7 @@ desc = "Go to Trash folder"
 on   = [ "M", "u" ]
 run  = [
     "shell -- udiskie-mount -a",
-    "cd /run/media/bodz"
+    "cd /run/media/$USER"
 ]
 desc = "Mount USB drives and go to mounts"
 
