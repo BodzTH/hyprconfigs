@@ -192,3 +192,8 @@ Whenever you update your wallpaper or styling, run this. It switches to an empty
 ```bash
 ~/.local/share/chezmoi/scripts/showcase.sh
 ```
+
+The bar's taskbar still shows icons for windows open on *other* workspaces. For a completely clean shot, start it detached with a delay, then close every window (including the terminal) before it fires. A notification confirms when it's pushed:
+```bash
+setsid -f ~/.local/share/chezmoi/scripts/showcase.sh 10
+```
