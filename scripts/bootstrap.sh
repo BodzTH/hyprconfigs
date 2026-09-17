@@ -111,7 +111,7 @@ fi
 log_info "Enabling core system services..."
 sudo systemctl enable --now NetworkManager.service 2>/dev/null || true
 sudo systemctl enable --now bluetooth.service 2>/dev/null || true
-sudo systemctl enable --now sddm.service
+sudo systemctl enable sddm.service  # no --now: starting it here would take over the screen mid-bootstrap
 
 log_info "Enabling user audio/portal services..."
 systemctl --user enable --now pipewire.socket pipewire-pulse.socket wireplumber.service 2>/dev/null || true
@@ -126,7 +126,7 @@ fi
 echo -e "\n${GREEN}${BOLD}====================================================${RESET}"
 echo -e "${GREEN}${BOLD}   Setup Complete!                                  ${RESET}"
 echo -e "${GREEN}${BOLD}====================================================${RESET}\n"
-echo -e "You can now log into Hyprland via SDDM."
+echo -e "Reboot to log into Hyprland via SDDM."
 echo -e "To customize hardware profile for this machine:"
 echo -e "  1. Check/edit: ${BOLD}~/.config/hypr/hosts/\$(hostname).lua${RESET}"
 echo -e "  2. Edit:       ${BOLD}chezmoi edit ~/.config/uwsm/env${RESET}"

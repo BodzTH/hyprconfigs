@@ -1,5 +1,5 @@
 # ~/.config/yazi/theme.toml
-# Custom color theme — Onyx Platinum (dark, desaturated palette)
+# Custom color theme — HyprBlur (dark, desaturated palette)
 # The built-in [icon] section is intentionally omitted; yazi loads its default
 # icon set automatically. Only explicit overrides belong here.
 

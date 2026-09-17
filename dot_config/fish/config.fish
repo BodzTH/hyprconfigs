@@ -13,7 +13,7 @@
 #
 # - functions/
 #   - y.fish               : Yazi file manager cwd switcher.
-#   - svim.fish            : sudo editor launcher preserving environmental display values.
+#   - svim.fish            : Edit root-owned files safely via sudoedit + nvim.
 #   - cat.fish             : bat wrapper fallback.
 #   - cdi.fish             : Interactive directory jump using zoxide.
 #   - mkcd.fish            : Create directory and cd into it.

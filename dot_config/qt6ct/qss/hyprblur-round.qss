@@ -1,4 +1,4 @@
-/* Onyx Round QSS for Fusion Style */
+/* HyprBlur Round QSS for Fusion Style */
 QPushButton, QToolButton, QComboBox, QLineEdit, QSpinBox, QDoubleSpinBox, QTimeEdit, QDateEdit, QDateTimeEdit {
     border-radius: 6px;
     padding: 4px 8px;

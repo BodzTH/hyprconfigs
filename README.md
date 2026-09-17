@@ -1,6 +1,6 @@
 # CachyOS Hyprland Environment — Dotfiles
 
-> Modular, reproducible, and hardware-portable **Onyx & Platinum** monochrome Hyprland desktop environment powered by **Chezmoi** and **Lua**.
+> Modular, reproducible, and hardware-portable **HyprBlur** monochrome Hyprland desktop environment powered by **Chezmoi** and **Lua**.
 
 ![Desktop Showcase](assets/screenshots/preview.png)
 
@@ -41,11 +41,11 @@ chezmoi init --apply BodzTH/hyprconfigs
 | **Editor** | [Neovim](https://neovim.io/) | Custom [NvChad](https://nvchad.com/) setup with Treesitter & LSP |
 | **File Manager** | [Yazi](https://yazi-rs.github.io/) | Blazing fast terminal file manager |
 | **Wallpaper** | [awww](https://github.com/awww-project/awww) | Dynamic wallpaper daemon with smooth transitions |
-| **Lock Screen** | [hyprlock](https://wiki.hypr.land/Hypr-Ecosystem/hyprlock/) | Onyx & Platinum minimal lock screen |
+| **Lock Screen** | [hyprlock](https://wiki.hypr.land/Hypr-Ecosystem/hyprlock/) | HyprBlur minimal lock screen |
 | **Idle Daemon** | [hypridle](https://wiki.hypr.land/Hypr-Ecosystem/hypridle/) | Automated screen blanking & DPMS |
-| **Theming** | Onyx & Platinum | Monochrome palette with Catppuccin Mocha Dark cursors |
+| **Theming** | HyprBlur | Monochrome palette with Catppuccin Mocha Dark cursors |
 
-`hypr/scripts/sync_border.py` watches the active wallpaper and rewrites the accent color into `hyprlock.conf`, `hyprtoolkit.conf`, and the `gtk-3.0`/`gtk-4.0` CSS on every change. The repo tracks those files with the static `#e5e5e5` accent as a seed — a live diff there after the daemon runs is expected, not drift.
+`hypr/scripts/sync_border.py` runs at login and on every wallpaper change (`awww_transition.sh`), picking a color from the wallpaper and writing it into the Hyprland border, `hyprlock.conf`, `hyprtoolkit.conf`, and the `gtk-3.0`/`gtk-4.0` CSS. The repo tracks those files with the static `#e5e5e5` accent as a seed — a live diff there is expected, not drift. Preview a wallpaper's color with `sync_border.py --dry-run <image>`.
 
 ---
 

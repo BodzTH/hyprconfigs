@@ -29,7 +29,7 @@ if not status is-interactive
     return
 end
 
-# Onyx and Platinum theme for FZF
+# HyprBlur theme for FZF
 if type -q fzf
     set -gx FZF_DEFAULT_OPTS "\
     --color=bg+:#1c1c1c,bg:#111111,spinner:#af87af,hl:#87afd7 \

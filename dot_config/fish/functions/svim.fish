@@ -1,7 +1,6 @@
-function svim --description 'Run Neovim with sudo preserving GUI display, runtime variables, and terminal type'
-    if type -q nvim
-        sudo -E WAYLAND_DISPLAY="$WAYLAND_DISPLAY" XDG_RUNTIME_DIR="$XDG_RUNTIME_DIR" TERM="$TERM" nvim $argv
-    else
-        sudo -E WAYLAND_DISPLAY="$WAYLAND_DISPLAY" XDG_RUNTIME_DIR="$XDG_RUNTIME_DIR" TERM="$TERM" vim $argv
-    end
+function svim --description 'Edit files as root safely: nvim runs as you, only the save is privileged'
+    # sudoedit copies the file to a temp file, opens it with your own nvim and
+    # config, then writes it back as root -- nothing in ~/.local/state/nvim
+    # ends up owned by root.
+    SUDO_EDITOR=nvim command sudoedit $argv
 end

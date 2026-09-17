@@ -194,10 +194,7 @@ desc = "Safely unmount and eject all USB drives"
 # Mount phone/MTP devices and go to mounts
 [[mgr.prepend_keymap]]
 on   = [ "M", "a" ]
-run  = [
-    "cd /run/user/1000/gvfs",
-    "shell --orphan -- sh -c 'YAZI_ID=$YAZI_ID ~/.config/yazi/yazi-mtp.py mount'"
-]
+run  = "shell --orphan -- sh -c 'YAZI_ID=$YAZI_ID ~/.config/yazi/yazi-mtp.py mount'"
 desc = "Mount phone/MTP devices and go to mounts"
 
 # Unmount all phone/MTP devices

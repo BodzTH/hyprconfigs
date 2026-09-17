@@ -68,7 +68,7 @@ Rectangle {
     // Process to get initial layout
     Process {
         id: getLayoutProc
-        command: ["sh", "-c", "hyprctl devices -j | grep 'active_keymap' | head -n1 | cut -d'\"' -f4"]
+        command: ["sh", "-c", "hyprctl devices -j | jq -r '.keyboards[] | select(.main) | .active_keymap'"]
         running: true
         stdout: StdioCollector {
             onStreamFinished: {
@@ -91,7 +91,7 @@ Rectangle {
 
     Process {
         id: switchLayoutProc
-        command: ["sh", "-c", "hyprctl switchxkblayout \"$(~/.config/scripts/mainkey.sh)\" next"]
+        command: ["hyprctl", "switchxkblayout", "current", "next"]
     }
 
     MouseArea {

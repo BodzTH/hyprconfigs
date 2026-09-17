@@ -7,7 +7,7 @@ function y --description 'Run Yazi file manager, restore last path on launch and
     # Determine the start path: use explicit arg if given, else restore last dir
     set start_args $argv
     if test (count $argv) -eq 0; and test -s "$state_file"
-        set last_dir (cat "$state_file")
+        read -l last_dir < "$state_file"
         if test -d "$last_dir"
             set start_args "$last_dir"
         end
@@ -18,7 +18,7 @@ function y --description 'Run Yazi file manager, restore last path on launch and
 
     # cd the shell to wherever yazi exited
     if test -s "$state_file"
-        set cwd (cat "$state_file")
+        read -l cwd < "$state_file"
         if [ "$cwd" != "$PWD" ]; and test -d "$cwd"
             builtin cd -- "$cwd"
             if type -q zoxide
