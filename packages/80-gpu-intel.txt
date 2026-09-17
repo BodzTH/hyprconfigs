@@ -1,0 +1,4 @@
+intel-media-driver
+libva-utils
+mesa-utils
+vulkan-intel

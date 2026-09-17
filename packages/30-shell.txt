@@ -5,6 +5,7 @@ eza
 ffmpegthumbnailer
 fish
 fzf
+git
 jq
 libdvdcss
 libgsf

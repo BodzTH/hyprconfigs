@@ -6,9 +6,14 @@
 
 ---
 
+This repo configures the **desktop environment only**: Hyprland, the shell, theming, and the
+SDDM greeter. It assumes a working Arch-family install with its own bootloader already in
+place — it does not install or modify one. `system/boot/` carries this machine's limine config
+as reference documentation, never applied automatically (see [System Files](#system-files-not-in-home)).
+
 ## Quick Start & Reproduction
 
-To reproduce this exact environment on any fresh CachyOS or Arch Linux installation:
+To reproduce this exact environment on any Arch-based Linux installation (CachyOS, Arch, EndeavourOS, etc.):
 
 ```bash
 # 1. Install chezmoi and git
@@ -27,11 +32,11 @@ chezmoi init --apply BodzTH/hyprconfigs
 
 | Component | Choice | Description |
 | :--- | :--- | :--- |
-| **OS / Kernel** | [CachyOS](https://cachyos.org/) | Optimized Arch-based rolling distro (`linux-cachyos`) |
 | **Compositor** | [Hyprland](https://hyprland.org/) | Modular Lua configuration (`hyprland.lua`) |
 | **Session Manager** | [UWSM](https://github.com/Vladimir-csp/uwsm) | Universal Wayland Session Manager with systemd integration |
+| **Greeter** | [SDDM](https://github.com/sddm/sddm) | Custom `hypr-sddm` theme (fork of sddm-astronaut), autologin into Hyprland |
 | **Status Bar & UI** | [QuickShell](https://quickshell.outfoxxed.me/) | Custom QML bar, app launcher, clipboard, and notifications |
-| **Terminal** | [Ghostty](https://ghostty.org/) / [Kitty](https://sw.kovidgoyal.net/kitty/) | Modern GPU-accelerated terminals |
+| **Terminal** | [Kitty](https://sw.kovidgoyal.net/kitty/) | Default terminal everywhere (Ghostty also installed, not default) |
 | **Shell** | [Fish](https://fishshell.com/) | Modular `conf.d/` + `functions/` with [Starship](https://starship.rs/) prompt |
 | **Editor** | [Neovim](https://neovim.io/) | Custom [NvChad](https://nvchad.com/) setup with Treesitter & LSP |
 | **File Manager** | [Yazi](https://yazi-rs.github.io/) | Blazing fast terminal file manager |
@@ -86,19 +91,23 @@ Packages are split into logical manifests in `packages/`:
 
 | Manifest | Purpose |
 | :--- | :--- |
-| `00-cachyos-base.txt` | Core system, CachyOS kernels, filesystem tools, bootloader |
-| `10-hyprland.txt` | Hyprland ecosystem, QuickShell, screen capture (`grim`, `slurp`, `satty`), daemons |
+| `10-hyprland.txt` | Hyprland ecosystem, QuickShell, SDDM, screen capture (`grim`, `slurp`, `satty`), daemons |
 | `20-apps.txt` | User GUI & CLI applications (Firefox, Obsidian, OBS, Inkscape, Neovim, etc.) |
-| `30-shell.txt` | Fish, Starship, Yazi, Bat, Eza, Fzf, Ripgrep, Zoxide, Btop |
+| `30-shell.txt` | Fish, Git, Starship, Yazi, Bat, Eza, Fzf, Ripgrep, Zoxide, Btop |
 | `40-terminals.txt` | Ghostty and Kitty |
-| `50-fonts.txt` | Nerd fonts, Cantarell, Noto, Cascadia Code |
+| `50-fonts.txt` | Adwaita, Cantarell, Noto, Cascadia Code Nerd Font |
 | `60-audio-media.txt` | Pipewire, Wireplumber, ALSA, GStreamer codecs |
 | `70-theming.txt` | Kvantum, Qt5ct, Qt6ct, Nwg-look, GTK stylesheets |
-| `80-gpu-amd.txt` | Vulkan Radeon, OpenCL Mesa, AMDGPU drivers |
-| `90-networking.txt` | NetworkManager, Bluetooth, OpenSSH, UFW, wireless tools |
-| `95-extra.txt` | LaTeX, TeXLive, and supplementary utilities |
+| `80-gpu-amd.txt` / `80-gpu-intel.txt` / `80-gpu-nvidia.txt` | GPU driver stack — `bootstrap.sh` installs only the one matching the detected vendor |
+| `90-networking.txt` | NetworkManager, Bluetooth, OpenSSH, UFW |
+| `95-extra.txt` | Spellcheck, mail, and account-services supplementary utilities |
 
-**Not covered by the manifests** (not packaged in the official repos, so `bootstrap.sh` can't install them — set these up manually before applying): the [Graphite GTK theme](https://github.com/vinceliuice/Graphite-gtk-theme) into `~/.themes/Graphite-Dark`, and the `catppuccin-mocha-dark-cursors` cursor theme.
+Bootloader, kernel, and base-OS packages (limine, mkinitcpio, plymouth, `linux-*`, etc.) are
+**not** in these manifests — that's the base install's job, done once before this repo comes
+into play. **Not covered by the manifests** either (not packaged in the official repos, so
+`bootstrap.sh` can't install them — set these up manually before applying): the
+[Graphite GTK theme](https://github.com/vinceliuice/Graphite-gtk-theme) into
+`~/.themes/Graphite-Dark`, and the `catppuccin-mocha-dark-cursors` cursor theme.
 
 ---
 
@@ -119,6 +128,32 @@ Packages are split into logical manifests in `packages/`:
 | <kbd>SUPER</kbd> + <kbd>Shift</kbd> + <kbd>W</kbd> | Transition Wallpaper (`awww`) |
 | <kbd>F11</kbd> | Fast region screenshot → clipboard (`grim` + `slurp`) |
 | <kbd>F12</kbd> | Annotate screenshot (`grim` + `slurp` + `satty`) |
+
+---
+
+## System Files (not in `$HOME`)
+
+Chezmoi only manages `$HOME`. A handful of files live outside it — the SDDM greeter and the
+bootloader config — and are tracked separately under `system/`, `.chezmoiignore`'d so chezmoi
+never tries to apply them into `~/system/...`.
+
+```
+system/
+├── etc/sddm.conf                          # autologin, hypr-sddm theme, cursor
+├── etc/default/limine                     # reference only — this machine's ESP path/cmdline
+├── boot/limine.conf.header                # reference only — never written to /boot
+└── usr/share/sddm/themes/hypr-sddm/       # custom greeter theme (fork of sddm-astronaut)
+```
+
+- **`etc/sddm.conf`** and **`usr/share/sddm/themes/hypr-sddm/`** are installed by
+  `scripts/bootstrap.sh` (`sudo install`/`cp`, same pattern as the package manifests). The
+  theme's `Backgrounds/` isn't vendored — bootstrap copies `street.gif` and `black_bg.jpg` in
+  from `Pictures/Wallpapers/` on every run, so the wallpaper stays in one place.
+- **`boot/limine.conf.header`** and **`etc/default/limine`** are **reference only**. Nothing in
+  this repo writes to `/boot` or runs `limine-install`/`limine-enroll-config` — copy them by
+  hand on a fresh machine, and change the `root=UUID=` line to that disk's actual UUID first.
+  The header's boot wallpaper is `Pictures/Wallpapers/white_mountain.png`, already tracked
+  elsewhere in the repo — copy it to the ESP as `limine_bg.png` rather than duplicating it here.
 
 ---
 

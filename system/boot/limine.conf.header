@@ -1,0 +1,34 @@
+# wallpaper image is Pictures/Wallpapers/white_mountain.png, already tracked
+# by this repo — copy it to the ESP as limine_bg.png by hand, it's not
+# duplicated here.
+### Wallpaper & Backdrop
+wallpaper: boot():/limine_bg.png
+wallpaper_style: stretched
+backdrop: 000000
+
+### Theme & Ricing (Frosted Graphite on Blurred Wallpaper)
+# Floating window margins matching Hyprland
+term_margin: 0
+term_margin_gradient: 0
+
+# Frosted translucent graphite terminal (aa = ~66% opacity)
+term_background: 66111111
+term_foreground: ffffff
+
+# Interface branding and help text styling
+interface_branding: YOUR BOOT MANAGER
+interface_branding_color: ffffff
+interface_help_color: 808080
+interface_help_color_bright: e0e0e0
+
+# Grayscale monochrome color palettes for ANSI terminal compatibility
+term_palette: 111111;444444;666666;888888;aaaaaa;cccccc;e0e0e0;ffffff
+term_palette_bright: 333333;555555;777777;999999;bbbbbb;dddddd;eeeeee;ffffff
+
+### Show warning instead of panic on hash mismatch
+hash_mismatch_panic: no
+
+### Timeout & Default Entry
+timeout: 3
+default_entry: 2
+remember_last_entry: yes

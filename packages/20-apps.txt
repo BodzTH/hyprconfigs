@@ -10,6 +10,4 @@ obsidian
 obs-studio
 openrgb
 pavucontrol
-podman
-podman-compose
 qalculate-gtk

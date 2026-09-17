@@ -8,16 +8,7 @@ README.md
 assets/**
 scripts/**
 packages/**
-
-# Agent & AI tool configurations
-.agents/**
-**/.agents/**
-**/.agents
-
-# Vendored upstream documentation (reference only; not meant to land in ~/.config)
-.config/hypr/hyprwiki/**
-.config/quickshell/quickshell-documentation/**
-.config/yazi/yazi-documentation/**
+system/**
 
 # App-managed state (fish rewrites this constantly; never track it)
 .config/fish/fish_variables
