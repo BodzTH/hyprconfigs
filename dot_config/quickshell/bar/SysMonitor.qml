@@ -25,7 +25,12 @@ Rectangle {
 
     TapHandler {
         onTapped: {
-            Quickshell.execDetached(["kitty", "-e", "btop"])
+            // Own scope, not quickshell.service's cgroup — see panels/AppLauncher.qml.
+            Quickshell.execDetached([
+                "systemd-run", "--user", "--scope", "--quiet", "--collect",
+                "--slice=app.slice", "--description=btop",
+                "kitty", "-e", "btop"
+            ])
         }
     }
 

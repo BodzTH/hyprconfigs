@@ -75,8 +75,15 @@ QtObject {
         }
     }
 
+    // Own scope, not quickshell.service's cgroup — see panels/AppLauncher.qml.
+    // A bare execDetached leaves nmtui inside quickshell.service, so a quickshell
+    // crash or Restart=on-failure would kill it mid-edit.
     function openManager() {
-        Quickshell.execDetached(["kitty", "-e", "nmtui"]);
+        Quickshell.execDetached([
+            "systemd-run", "--user", "--scope", "--quiet", "--collect",
+            "--slice=app.slice", "--description=nmtui",
+            "kitty", "-e", "nmtui"
+        ]);
     }
 
     // Fetch detailed info (IP/gateway/DNS/IPv6) for the active connection

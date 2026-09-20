@@ -164,7 +164,13 @@ PanelWindow {
                         if (clipboardWindow.filteredItems.length > 0) {
                             var entry = clipboardWindow.filteredItems[itemList.currentIndex]
                             if (entry) {
-                                Quickshell.execDetached(["bash", "-c", "printf \"%s\\n\" \"$1\" | cliphist decode | wl-copy", "--", entry.rawLine]);
+                                Quickshell.execDetached([
+                                    // Own scope: wl-copy daemonizes to serve the selection, so a bare
+                                    // execDetached left it in quickshell.service and a quickshell restart
+                                    // silently dropped whatever you had just copied.
+                                    "systemd-run", "--user", "--scope", "--quiet", "--collect",
+                                    "--slice=app.slice", "--description=clipboard paste",
+                                    "bash", "-c", "printf \"%s\\n\" \"$1\" | cliphist decode | wl-copy", "--", entry.rawLine]);
                                 clipboardWindow.visible = false
                             }
                         }
@@ -246,7 +252,13 @@ PanelWindow {
 
                 TapHandler {
                     onTapped: {
-                        Quickshell.execDetached(["bash", "-c", "printf \"%s\\n\" \"$1\" | cliphist decode | wl-copy", "--", itemRow.modelData.rawLine]);
+                        Quickshell.execDetached([
+                            // Own scope: wl-copy daemonizes to serve the selection, so a bare
+                            // execDetached left it in quickshell.service and a quickshell restart
+                            // silently dropped whatever you had just copied.
+                            "systemd-run", "--user", "--scope", "--quiet", "--collect",
+                            "--slice=app.slice", "--description=clipboard paste",
+                            "bash", "-c", "printf \"%s\\n\" \"$1\" | cliphist decode | wl-copy", "--", itemRow.modelData.rawLine]);
                         clipboardWindow.visible = false
                     }
                 }

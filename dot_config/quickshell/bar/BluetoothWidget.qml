@@ -88,8 +88,13 @@ Rectangle {
     Keys.onReturnPressed: BluetoothService.toggle()
     Keys.onSpacePressed: BluetoothService.toggle()
 
+    // Own scope, not quickshell.service's cgroup — see panels/AppLauncher.qml.
     function openManager() {
-        Quickshell.execDetached(["sh", "-c", "blueman-manager || overskride || gnome-control-center bluetooth || ghostty -e bluetoothctl || kitty -e bluetoothctl || alacritty -e bluetoothctl || foot -e bluetoothctl || xterm -e bluetoothctl"]);
+        Quickshell.execDetached([
+            "systemd-run", "--user", "--scope", "--quiet", "--collect",
+            "--slice=app.slice", "--description=bluetooth manager",
+            "sh", "-c", "blueman-manager || overskride || gnome-control-center bluetooth || ghostty -e bluetoothctl || kitty -e bluetoothctl || alacritty -e bluetoothctl || foot -e bluetoothctl || xterm -e bluetoothctl"
+        ]);
     }
 
     MouseArea {
