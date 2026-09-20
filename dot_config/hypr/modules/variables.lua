@@ -21,7 +21,9 @@ vars.notingApp       = "obsidian"
 vars.discord         = "discord"
 vars.updater         = "kitty --class=cachy.update -e sh -c 'sudo pacman -Syu; echo \"\nPress Enter to close...\"; read'"
 vars.antigravity     = home .. "/Apps/Antigravity/Antigravity.AppImage --ozone-platform-hint=auto --enable-features=WaylandWindowDecorations"
-vars.bar             = "env QT_QPA_PLATFORMTHEME=qt6ct quickshell"
+-- NOTE: vars.bar removed — quickshell is a systemd unit now (../systemd/quickshell.service),
+--       not an exec_cmd. Its `env QT_QPA_PLATFORMTHEME=qt6ct` prefix was also already
+--       redundant: modules/environment.lua exports that var session-wide.
 
 -- ▓▒░ HOST-SPECIFIC APPLICATION OVERRIDES
 if host and host.apps then

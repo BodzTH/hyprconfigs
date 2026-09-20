@@ -1,19 +1,25 @@
 -- █ █▄░█ █▀█ █░█ ▀█▀
 -- █ █░▀█ █▀▀ █▄█ ░█░
 --
--- MODULE 7: INPUT DEVICES
--- Keyboard, mouse, trackpad, and input device configuration
+-- INPUT — keyboard, pointer, touchpad, gestures, per-device overrides.
+--
+-- NOTE: these settings used to be split across input.lua and layouts.lua, so
+--       grepping one file for `repeat_rate` found nothing and the key looked
+--       unset. Every `input` key now lives in this one block. Keep it that way.
 -- See: https://wiki.hypr.land/Configuring/Advanced-and-Cool/Devices/
 -- ═══════════════════════════════════════════════════════════════
 
 local host = require("hosts")
 
--- ▓▒░ GLOBAL INPUT SETTINGS
 hl.config({
     input = {
         kb_layout    = "us,ara",   -- Arabic + US layout; SUPER+K switches between them
         follow_mouse = 1,
         sensitivity  = 0,          -- -1.0 to 1.0, 0 = no modification
+
+        repeat_rate            = 40,   -- default 25 — noticeably sluggish key-repeat in nvim/yazi
+        repeat_delay           = 300,  -- default 600
+        follow_mouse_threshold = 3,    -- avoids focus jitter when the cursor crosses the 20px gaps
 
         -- Ignored entirely on machines with no touchpad (e.g. the desktop) —
         -- safe to keep here so the same config covers a laptop too.
@@ -34,17 +40,11 @@ hl.config({
     },
 })
 
--- ▓▒░ GESTURES CONFIGURATION
+-- ▓▒░ GESTURES
 -- See: https://wiki.hypr.land/Configuring/Advanced-and-Cool/Gestures/
-hl.gesture({
-    fingers   = 3,
-    direction = "horizontal",
-    action    = "workspace",
-})
+hl.gesture({ fingers = 3, direction = "horizontal", action = "workspace" })
 
--- ▓▒░ PER-DEVICE INPUT CONFIGURATION
-if host and host.devices then
-    for _, dev in ipairs(host.devices) do
-        hl.device(dev)
-    end
+-- ▓▒░ PER-DEVICE OVERRIDES (from hosts/<hostname>.lua)
+for _, dev in ipairs(host.devices or {}) do
+    hl.device(dev)
 end

@@ -54,12 +54,17 @@ hl.bind(m .. " + SHIFT + V", hl.dsp.exec_cmd("cliphist wipe"))
 
 -- ▓▒░ SCREENSHOT BINDINGS
 -- F11: Direct region capture → clipboard (fast, no UI)
+-- The grim/wl-copy pair MUST stay braced. `||` and `&&` are equal precedence and
+-- left-associative, so the unbraced form parsed as (pkill || grim) && wl-copy:
+-- pressing F11 to cancel an open slurp killed the selection and then copied the
+-- *previous* capture off the temp file. F12 never had this because `|` binds
+-- tighter than `||`, which is why only this line needed the braces.
 hl.bind("F11", hl.dsp.exec_cmd(
-    'sh -c \'TEMP="/tmp/screenshot_region.png"; grim -g "$(slurp)" "$TEMP" && wl-copy -t image/png < "$TEMP"\''
+    'sh -c \'TEMP="/tmp/screenshot_region.png"; pkill -x slurp || { grim -g "$(slurp)" "$TEMP" && wl-copy -t image/png < "$TEMP"; }\''
 ))
 -- F12: Region capture → Satty annotation → save & clipboard
 hl.bind("F12", hl.dsp.exec_cmd(
-    'sh -c \'mkdir -p ~/Pictures/Screenshots; grim -g "$(slurp)" - | satty --filename - --output-filename ~/Pictures/Screenshots/$(date +%Y-%m-%d_%H-%M-%S).png\''
+    'sh -c \'mkdir -p ~/Pictures/Screenshots; pkill -x slurp || grim -g "$(slurp)" - | satty --filename - --output-filename ~/Pictures/Screenshots/$(date +%Y-%m-%d_%H-%M-%S).png\''
 ))
 -- SUPER+Print: close all windows first -- captures the desktop as the README
 -- preview and pushes it (chezmoi scripts/showcase.sh)
@@ -97,6 +102,11 @@ hl.bind(m .. " + mouse:272", hl.dsp.window.drag(),   { mouse = true })
 hl.bind(m .. " + mouse:273", hl.dsp.window.resize(), { mouse = true })
 
 -- ▓▒░ MULTIMEDIA & BRIGHTNESS (laptop function keys)
+-- NOTE: brightnessctl is NOT installed on hyprcachyos, so the two XF86MonBrightness
+--       binds below are inert here. Kept deliberately — they are laptop function
+--       keys and this one tree runs on both machines. `pacman -S brightnessctl`
+--       on a host that has a backlight. Same for playerctl in the next block.
+--       The wpctl binds work: wireplumber is installed.
 hl.bind("XF86AudioRaiseVolume",  hl.dsp.exec_cmd("wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%+"), { locked = true, repeating = true })
 hl.bind("XF86AudioLowerVolume",  hl.dsp.exec_cmd("wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"),      { locked = true, repeating = true })
 hl.bind("XF86AudioMute",         hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"),     { locked = true })
@@ -105,6 +115,10 @@ hl.bind("XF86MonBrightnessUp",   hl.dsp.exec_cmd("brightnessctl -e4 -n2 set 5%+"
 hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd("brightnessctl -e4 -n2 set 5%-"),                  { locked = true, repeating = true })
 
 -- ▓▒░ MEDIA CONTROL
+-- NOTE: playerctl is NOT installed on hyprcachyos — these four are inert here.
+--       Left in place for portability; `pacman -S playerctl` to activate them.
+--       quickshell's bar does not shell out to playerctl, so nothing else covers
+--       these keys in the meantime.
 hl.bind("XF86AudioNext",  hl.dsp.exec_cmd("playerctl next"),       { locked = true })
 hl.bind("XF86AudioPause", hl.dsp.exec_cmd("playerctl play-pause"), { locked = true })
 hl.bind("XF86AudioPlay",  hl.dsp.exec_cmd("playerctl play-pause"), { locked = true })
@@ -117,14 +131,16 @@ hl.bind(m .. " + SHIFT + W", hl.dsp.exec_cmd("~/.config/hypr/scripts/awww_transi
 hl.bind(m .. " + SHIFT + P", hl.dsp.exec_cmd("~/.config/hypr/scripts/pick_rgb.fish"))
 
 -- ▓▒░ SESSION LOCK
--- No lock keybind existed before — hyprlock was only reachable via hypridle's timers.
-hl.bind(m .. " + L", hl.dsp.exec_cmd("pidof hyprlock || hyprlock --grace 1"),
+-- Emits logind's Lock signal rather than naming hyprlock here; hypridle picks it
+-- up and runs its lock_cmd. Same path sleep takes, so the locker is defined once
+-- (hypridle.conf) instead of being repeated at every call site.
+hl.bind(m .. " + L", hl.dsp.exec_cmd("loginctl lock-session"),
     { description = "Lock the screen" })
 
--- Laptop lid switch — a silent no-op on machines with no lid device.
--- Verify the exact name with `hyprctl devices` if it doesn't fire.
-hl.bind("switch:on:Lid Switch", hl.dsp.exec_cmd("pidof hyprlock || hyprlock --grace 1"),
-    { locked = true, description = "Lock on lid close" })
+-- NOTE: no lid-switch bind. Lid handling belongs to logind, not Hyprland —
+--       closing the lid raises PrepareForSleep, which hypridle's before_sleep_cmd
+--       already locks on. A bind here would be a second, redundant path, and
+--       Switches warns it can conflict with logind's own HandleLidSwitch.
 
 -- ▓▒░ WINDOW MOVE (direction) — SUPER+SHIFT+arrows stays resize, unchanged
 hl.bind(m .. " + CTRL + left",  hl.dsp.window.move({ direction = "l" }), { description = "Move window left" })

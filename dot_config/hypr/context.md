@@ -1,0 +1,196 @@
+# Context — `~/.config/hypr`
+
+Orientation for agents working in this repo. Read this and `FILEMAP.md` before editing.
+
+**Hyprland 0.56.2.** Config language is **Lua, not hyprlang.** Entry point is
+`hyprland.lua`. If you write `general { gaps_in = 5 }` hyprlang-style, it is wrong here.
+
+---
+
+## The one rule
+
+**Everything stays in one version-controlled tree.**
+
+This is not style preference, it is the lesson from a real outage. Environment
+variables used to live in `~/.config/uwsm/env`, outside this tree. Those files are
+static shell and cannot read `hosts/`, so `AQ_DRM_DEVICES` — a workaround for an
+Aquamarine crash on this dual-GPU box — fell into the gap between the two systems
+and was silently absent for an unknown period. Nothing errored. It was found by
+reading `/proc/<pid>/environ`.
+
+uwsm was removed on 2026-09-21. Do not reintroduce config outside `~/.config/hypr`.
+Systemd units live in `systemd/` here and are symlinked out by `scripts/bootstrap.sh`.
+
+## Host portability
+
+One tree runs on multiple machines. `hosts/init.lua` reads `hostname` and loads
+`hosts/<hostname>.lua`, falling back to `hosts/default.lua`.
+
+A host profile supplies five keys — `monitors`, `gpu`, `env`, `apps`, `devices`.
+Modules consume them; **modules never hardcode machine-specific values.** If you
+are about to write a resolution, a GPU, a device name or a GPU-specific env var
+into `modules/`, it belongs in the host profile instead.
+
+Adding a machine = one new `hosts/<hostname>.lua` + run `scripts/bootstrap.sh`. No
+module edits. Keep it that way.
+
+### GPU selection is resolved, not hardcoded
+
+`/dev/dri/cardN` numbers are assigned at boot and move between boots. The wiki
+warns against pinning them, and the stable `by-path` names can't go in
+`AQ_DRM_DEVICES` because they contain `:`, which that variable uses as its own
+separator.
+
+So host profiles list **PCI addresses** and `modules/environment.lua` resolves them
+at startup via `readlink -e`. Note `-e`, not `-f`: `-f` prints a canonicalized path
+even when nothing exists there, which would export a nonexistent device — worse
+than exporting nothing. An unresolvable address degrades to auto-detect. If you
+touch that resolver, re-test it with a bogus address.
+
+## Daemons are systemd units, not `exec_cmd`
+
+`quickshell`, `awww-daemon` and both `cliphist` watchers are user units in
+`systemd/`, pulled in by `graphical-session.target`. They get `Restart=on-failure`
+and their own cgroups.
+
+### Something must start `graphical-session.target` — Hyprland 0.56.2 does not
+
+This is the second outage caused by the same gap, and it is the one to remember.
+The wiki page `hyprwiki/configuring/extra/systemd.md:12` says the session target is
+"integrated into Hyprland and handled automatically" and tells you to *delete* any
+`systemctl --user start` call from your config. **That page documents a newer
+release than the one installed.** Verified on 0.56.2:
+
+```sh
+strings /usr/bin/Hyprland | grep -c graphical-session   # 0
+pacman -Ql hyprland | grep /usr/lib/systemd             # nothing
+```
+
+Neither `graphical-session.target` nor `hyprland-session.target` appears in
+`/usr/bin/Hyprland`, `/usr/bin/start-hyprland`, `/usr/bin/hyprctl` or any linked
+`libhypr*`/`libaquamarine`, and the package ships no unit files. The binary only
+runs `systemctl --user import-environment …`.
+
+uwsm was doing it. Removing uwsm left nobody doing it, so every
+`WantedBy=graphical-session.target` unit stayed `inactive` — no bar, no wallpaper,
+no clipboard history, no polkit agent, no idle lock — while `systemctl --user
+list-units --state=failed` stayed empty, because nothing failed. Nothing was ever
+asked to start.
+
+`systemd/hyprland-session.target` now fills the gap, started and stopped by
+`modules/autostart.lua` on `hyprland.start` / `hyprland.shutdown`. **Do not delete
+those handlers on the wiki's advice while Hyprland is 0.56.x.** Re-check after
+every upgrade; only drop them once the `grep -c` above prints nonzero.
+
+Diagnose this class of failure with the target, not the units:
+
+```sh
+systemctl --user is-active graphical-session.target   # inactive = nothing started it
+```
+
+Units use `app.slice` / `background.slice`. **Never `app-graphical.slice` or
+`background-graphical.slice`** — those are shipped by the uwsm package, which is gone.
+
+`modules/autostart.lua` holds only what systemd cannot express: a step sequenced
+after awww-daemon's socket is accepting connections. Do not add daemons to it.
+
+### quickshell is the single point of failure
+
+It is simultaneously the bar, launcher, clipboard panel, power menu, screenshot
+panel, notification server and network widget. **Six keybinds** route to it through
+the `global_shortcuts` protocol (`quickshell:toggle-launcher` and friends in
+`modules/keybindings.lua`). Its QML lives in `~/.config/quickshell/` — a separate
+tree, outside this one. Renaming a shortcut here silently breaks it unless the QML
+`GlobalShortcut` is renamed to match.
+
+## Locking
+
+The locker is named in exactly one place: `hypridle.conf`'s `general:lock_cmd`.
+Everything else — sleep, the idle timer, SUPER+L — emits `loginctl lock-session`,
+and hypridle runs `lock_cmd` in response.
+
+Do not call `hyprlock` directly from a keybind or listener. It duplicates the
+definition and breaks hypridle's sleep-inhibit detection, which needs to recognize
+the `lock_cmd`/`before_sleep_cmd` pairing to hold the inhibitor until the session is
+genuinely locked. Confirm the strong mode in the log:
+
+```
+Sleep inhibition enabled - inhibiting until the wayland session gets locked
+```
+
+Lock fires at 600s, display blanks at 630s. **Keep that order.** It was previously
+inverted — blank at 600, lock at 900 — leaving five minutes where the screen was
+dark and unlocked, which reads as locked and is not.
+
+There is deliberately **no lid-switch bind**. Lid handling belongs to logind; closing
+the lid raises `PrepareForSleep`, which `before_sleep_cmd` already locks on.
+
+## Runtime border color
+
+`scripts/sync_border.py` extracts a color from the wallpaper and writes it into
+`hyprlock.conf`, `hyprtoolkit.conf`, the GTK 3/4 stylesheets, OpenRGB, and the live
+border via `hyprctl eval`.
+
+Two consequences. First, **those files are rewritten at runtime** — a border/accent
+color you read there is not necessarily what the repo intends. Second, a config
+reload re-applies `appearance.lua`'s static border and wipes it, which is why
+`modules/autostart.lua` re-runs the script on `config.reloaded`.
+
+## Verifying a change
+
+The vendored **`hyprwiki/`** (120 files) is a full copy of the Hyprland wiki. Check
+it before asserting something is broken — a previous audit flagged
+`hyprctl dispatch 'hl.dsp.dpms(...)'` as invalid syntax when the wiki documents that
+exact form. Cite `file:line`.
+
+```sh
+luac -p hyprland.lua modules/*.lua hosts/*.lua   # syntax, no reload needed
+hyprctl reload && hyprctl configerrors           # semantics; empty output = clean
+systemctl --user status quickshell               # any managed daemon
+systemctl --user show-environment | grep AQ_DRM  # env only applies at launch
+```
+
+`hl.env()` takes effect **at launch only.** A reload will not change it — verifying
+an env change requires a relogin.
+
+## chezmoi
+
+`chezmoi managed` covers **34 files** under `.config/hypr` — every file in this
+tree except `hyprwiki/`, which is vendored upstream documentation and is
+deliberately left out rather than putting 120 upstream files in the dotfile repo.
+`systemd/`, `scripts/bootstrap.sh`, `hosts/laptop.lua`, `context.md` and this
+file's companion `FILEMAP.md` were added on 2026-09-21; they are what a new host
+actually needs.
+
+(`scripts/showcase.sh` is not here at all — it lives in the chezmoi source tree and
+is reached via `chezmoi source-path` from `keybindings.lua`. That is intentional.)
+
+### The source tree drifts, and `apply` is the dangerous direction
+
+Being *tracked* is not the same as being *current*. On 2026-09-21 the source was
+found to be **pre-uwsm-purge** for 11 tracked files: it still held the
+commented-out `hl.env()` block labelled "managed by UWSM", `vars.bar`, and host
+profiles with no `gpu`/`env` keys. `chezmoi apply` would have restored exactly the
+outage the rest of this file documents — `AQ_DRM_DEVICES` gone, daemons back to
+`exec_cmd`. Fixed with `chezmoi re-add`.
+
+Editing happens **here**, in `~/.config/hypr`, so the live tree is the source of
+truth and chezmoi has to be pushed to match it. Check before trusting `apply`:
+
+```sh
+chezmoi verify ~/.config/hypr   # exit 0 = source matches live
+chezmoi diff   ~/.config/hypr   # a/ = live, b/ = what apply would write
+chezmoi re-add ~/.config/hypr   # pull live changes INTO the source
+```
+
+Run `re-add` after every editing session. `hyprlock.conf` and `hyprtoolkit.conf`
+will always show as changed if the wallpaper accent moved since the last re-add —
+`scripts/sync_border.py` rewrites them at runtime, so whatever accent is in the
+source is just whichever wallpaper was up when it was last captured.
+
+## Conventions
+
+ASCII-art banner + `-- ═══` rule at the top of each module; `-- ▓▒░` section
+headers. Comments explain **why**, especially where something looks redundant or
+was deliberately removed — several `NOTE:` comments exist to stop a future reader
+"helpfully" re-adding a thing that was taken out on purpose. Preserve them.

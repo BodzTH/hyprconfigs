@@ -1,0 +1,26 @@
+[Unit]
+Description=Hyprland session
+Documentation=man:systemd.special(7)
+
+# Hyprland 0.56.2 does NOT start graphical-session.target itself. The wiki page
+# Configuring/Extra/Systemd claims it is "integrated into Hyprland and handled
+# automatically" -- that documents a newer release than what is installed here.
+# Verified on 0.56.2: neither `graphical-session.target` nor
+# `hyprland-session.target` appears in /usr/bin/Hyprland, /usr/bin/start-hyprland,
+# /usr/bin/hyprctl or any linked libhypr*/libaquamarine, and the hyprland package
+# ships no unit files at all. The binary only runs `systemctl --user
+# import-environment ...`. uwsm used to start the target; when uwsm was removed
+# nothing took over, so every WantedBy=graphical-session.target unit stayed dead.
+#
+# This target is the replacement, kept in-tree per the one rule. Starting it
+# pulls in graphical-session.target (BindsTo implies Requires), which activates
+# quickshell, awww-daemon and both cliphist watchers. It is started and stopped
+# by modules/autostart.lua on hyprland.start / hyprland.shutdown.
+#
+# Re-check on every Hyprland upgrade:
+#   strings /usr/bin/Hyprland | grep -c graphical-session
+# Nonzero means the compositor handles this now and this target, its bootstrap
+# entry and the autostart.lua handlers can all be dropped.
+BindsTo=graphical-session.target
+Wants=graphical-session-pre.target
+After=graphical-session-pre.target

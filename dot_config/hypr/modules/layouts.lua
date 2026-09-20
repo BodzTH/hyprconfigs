@@ -46,12 +46,11 @@ hl.config({
         hide_special_on_workspace_change  = true,  -- two scratchpads bound (SUPER+S / SUPER+N)
     },
 
-    -- ▓▒░ INPUT RESPONSIVENESS
-    input = {
-        repeat_rate            = 40,   -- default 25 — noticeably sluggish key-repeat in nvim/yazi
-        repeat_delay           = 300,  -- default 600
-        follow_mouse_threshold = 3,    -- avoids focus jitter when the cursor crosses the 20px gaps
-    },
+    -- NOTE: no `input` block here. repeat_rate, repeat_delay and
+    --       follow_mouse_threshold used to be duplicated in this file, which is
+    --       exactly the split input.lua's header warns about — grepping one file
+    --       found nothing and the key looked unset. Every `input` key lives in
+    --       modules/input.lua now. Don't re-add one here.
 
     -- ▓▒░ ECOSYSTEM
     ecosystem = {

@@ -9,6 +9,9 @@ return {
             scale    = 1,
         },
     },
-    apps = {},
+    -- Empty: let Aquamarine auto-detect GPUs. Correct default on unknown hardware.
+    gpu     = {},
+    env     = {},
+    apps    = {},
     devices = {},
 }
