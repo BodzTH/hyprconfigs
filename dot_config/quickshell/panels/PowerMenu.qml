@@ -73,6 +73,28 @@ PanelWindow {
 
     // --no-fork: run in the foreground of the scope so systemd supervises
     // hyprshutdown itself rather than a daemonized grandchild.
+    //
+    // --post-cmd is upstream's documented way to reboot/power off, and it is kept.
+    // It does carry one residual race: the scope lives under user@1000.service,
+    // Linger=no, so once SDDM's session ends the scope is torn down -- and the
+    // post-cmd only runs after Hyprland has exited. The margin is wide (post-cmd
+    // is one logind call; teardown has to walk Hyprland -> start-hyprland ->
+    // sddm-helper -> logind -> user@1000.service first) and this is unchanged
+    // from before the cgroup fix, which strictly improved survivability. It was
+    // never the cause of the observed failure.
+    //
+    // If reboot/poweroff ever logs you out WITHOUT powering the machine down,
+    // that race is the place to look, not the cgroup. Diagnosis: the scope died
+    // early, so nothing issued the logind call. Two ways out, in order of
+    // preference:
+    //   1. "hyprshutdown --no-fork --no-exit -t '...' ; systemctl reboot"
+    //      -- issues the power action while the session is still fully alive, so
+    //      nothing has to outlive Hyprland. UNVERIFIED: if --no-exit does not
+    //      return on its own once apps are closed, every reboot would hang on
+    //      the dialog, so test it before adopting.
+    //   2. loginctl enable-linger -- keeps user@1000.service (and the scope)
+    //      alive past session end. Guaranteed, but it also starts your user
+    //      units at boot without a login, which is a much broader change.
     function doLogout()   { runDetached("hyprshutdown (logout)",   "hyprshutdown --no-fork") }
     function doReboot()   { runDetached("hyprshutdown (reboot)",   "hyprshutdown --no-fork -t 'Rebooting...' --post-cmd 'systemctl reboot'") }
     function doPoweroff() { runDetached("hyprshutdown (poweroff)", "hyprshutdown --no-fork -t 'Shutting down...' --post-cmd 'systemctl poweroff'") }
