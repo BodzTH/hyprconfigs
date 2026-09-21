@@ -28,9 +28,9 @@
 -- installed binaries: `graphical-session.target` / `hyprland-session.target`
 -- appear nowhere in /usr/bin/Hyprland, /usr/bin/start-hyprland, /usr/bin/hyprctl
 -- or any linked libhypr*/libaquamarine, and the hyprland package ships no units.
--- uwsm used to start the target; removing uwsm left nobody doing it, so
--- quickshell, awww-daemon and both cliphist watchers never started -- no bar,
--- no wallpaper, no clipboard history, with nothing logged as an error anywhere.
+-- Without this handler, nothing starts the target -- quickshell, awww-daemon
+-- and both cliphist watchers stay dead, with nothing logged as an error
+-- anywhere (see context.md for how that was found).
 --
 -- import-environment first: Hyprland runs the same import itself, but the
 -- ordering against this handler is not guaranteed, and a unit that starts

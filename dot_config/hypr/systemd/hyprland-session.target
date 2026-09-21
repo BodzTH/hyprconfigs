@@ -9,10 +9,10 @@ Documentation=man:systemd.special(7)
 # `hyprland-session.target` appears in /usr/bin/Hyprland, /usr/bin/start-hyprland,
 # /usr/bin/hyprctl or any linked libhypr*/libaquamarine, and the hyprland package
 # ships no unit files at all. The binary only runs `systemctl --user
-# import-environment ...`. uwsm used to start the target; when uwsm was removed
-# nothing took over, so every WantedBy=graphical-session.target unit stayed dead.
+# import-environment ...`. Without something starting it explicitly, every
+# WantedBy=graphical-session.target unit stays dead (see context.md).
 #
-# This target is the replacement, kept in-tree per the one rule. Starting it
+# This target fills that gap, kept in-tree per the one rule. Starting it
 # pulls in graphical-session.target (BindsTo implies Requires), which activates
 # quickshell, awww-daemon and both cliphist watchers. It is started and stopped
 # by modules/autostart.lua on hyprland.start / hyprland.shutdown.

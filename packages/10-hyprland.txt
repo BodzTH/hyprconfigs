@@ -19,7 +19,6 @@ slurp
 swappy
 udiskie
 upower
-uwsm
 wl-clipboard
 xdg-desktop-portal-hyprland
 xdg-user-dirs

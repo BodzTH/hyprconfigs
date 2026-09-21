@@ -32,8 +32,7 @@ chezmoi init --apply BodzTH/hyprconfigs
 
 | Component | Choice | Description |
 | :--- | :--- | :--- |
-| **Compositor** | [Hyprland](https://hyprland.org/) | Modular Lua configuration (`hyprland.lua`) |
-| **Session Manager** | [UWSM](https://github.com/Vladimir-csp/uwsm) | Universal Wayland Session Manager with systemd integration |
+| **Compositor** | [Hyprland](https://hyprland.org/) | Modular Lua configuration (`hyprland.lua`), launched directly — no session manager wrapper |
 | **Greeter** | [SDDM](https://github.com/sddm/sddm) | Custom `hypr-sddm` theme (fork of sddm-astronaut), autologin into Hyprland |
 | **Status Bar & UI** | [QuickShell](https://quickshell.outfoxxed.me/) | Custom QML bar, app launcher, clipboard, and notifications |
 | **Terminal** | [Kitty](https://sw.kovidgoyal.net/kitty/) | Default terminal everywhere (Ghostty also installed, not default) |
@@ -81,11 +80,11 @@ return {
 }
 ```
 
-### 2. Environment Variables & GPU Profiles (`~/.config/uwsm/`)
-The UWSM environment file is a Chezmoi Go template (`dot_config/uwsm/env.tmpl`). `AQ_DRM_DEVICES` is deliberately left unset — aquamarine picks the primary GPU on its own, and a hand-set list breaks easily (it's `:`-separated, so `/dev/dri/by-path/pci-0000:03:00.0-card` paths can't be used, and `/dev/dri/cardN` numbers can swap between boots). The GPU vendor is detected automatically at `chezmoi init` time by reading `/sys/class/drm/*/device/vendor` (discrete beats integrated on hybrid setups); it's cached in `~/.config/chezmoi/chezmoi.toml`, so re-run `chezmoi init` after swapping GPUs.
-- **AMD**: Activates RADV, `radeonsi`, and the DXVK device filter.
-- **NVIDIA**: Activates `nvidia-drm`, `__GLX_VENDOR_LIBRARY_NAME=nvidia`, and `NVD_BACKEND=direct`.
-- **Intel**: Activates `iHD` VA-API drivers.
+### 2. Environment Variables & GPU Profiles (`hosts/<hostname>.lua`)
+`modules/environment.lua` resolves each host's `gpu` list (PCI addresses, primary renderer first) to `/dev/dri/cardN` paths at launch and exports `AQ_DRM_DEVICES` — only when a profile lists GPUs; the default empty list lets Aquamarine auto-detect, which is correct on unknown hardware. PCI addresses are used because `/dev/dri/cardN` numbers can swap between boots and the stable `by-path` names contain `:`, which the variable uses as its own separator. GPU-vendor env vars live in the host profile itself, never in the shared module (see `hosts/hyprcachyos.lua`). The vendor used to pick the right `packages/80-gpu-*.txt` manifest is still detected automatically at `chezmoi init` time by reading `/sys/class/drm/*/device/vendor` (discrete beats integrated on hybrid setups) and cached in `~/.config/chezmoi/chezmoi.toml`; re-run `chezmoi init` after swapping GPUs.
+- **AMD**: `AMD_VULKAN_ICD=RADV`, `LIBVA_DRIVER_NAME=radeonsi`.
+- **NVIDIA**: `GBM_BACKEND=nvidia-drm`, `__GLX_VENDOR_LIBRARY_NAME=nvidia`, `NVD_BACKEND=direct`.
+- **Intel**: `LIBVA_DRIVER_NAME=iHD`.
 
 ---
 

@@ -7,10 +7,9 @@
 -- hl.env() sets these before the display server initializes, which is why
 -- AQ_DRM_DEVICES below is effective here.
 --
--- These lived in ~/.config/uwsm/env while the session was uwsm-managed. That
--- split the config across two trees -- uwsm's env files are static shell and
--- can't read hosts/ -- and AQ_DRM_DEVICES was silently lost in the gap. Env is
--- back in-tree so it stays host-aware and version-controlled.
+-- Keep these in-tree, not in a static shell env file: a static file can't read
+-- hosts/, which previously let AQ_DRM_DEVICES silently drop out unnoticed (see
+-- context.md). Lua keeps it host-aware and version-controlled.
 -- ═══════════════════════════════════════════════════════════════
 
 local host = require("hosts")
@@ -76,17 +75,21 @@ if runtime_dir then
     hl.env("SSH_AUTH_SOCK", runtime_dir .. "/gcr/ssh")
 end
 
--- ▓▒░ AMD GPU — VULKAN & GRAPHICS
-hl.env("AMD_VULKAN_ICD", "RADV")
-hl.env("LIBVA_DRIVER_NAME", "radeonsi")
+-- ▓▒░ MESA — GAMING PERFORMANCE
+-- NOTE: commented out — this machine isn't used for gaming, so Mesa keeps its
+--       own defaults. Both are Mesa driconf options (radeonsi/radv here,
+--       iris/anv on Intel) and host-neutral, so uncommenting is all a return
+--       to gaming needs.
+-- hl.env("mesa_glthread", "true")           -- Mesa GL threading for OpenGL games
+-- hl.env("vk_xwayland_wait_ready", "false") -- skip XWayland VSync wait, cuts input latency
 
--- ▓▒░ AMD GPU — GAMING PERFORMANCE
-hl.env("mesa_glthread", "true")           -- Mesa GL threading for OpenGL games (RadeonSI)
-hl.env("vk_xwayland_wait_ready", "false") -- skip XWayland VSync wait, cuts input latency
+-- NOTE: AMD_VULKAN_ICD and LIBVA_DRIVER_NAME live in hosts/hyprcachyos.lua now.
+--       They name a GPU vendor, and LIBVA_DRIVER_NAME=radeonsi on a non-AMD
+--       host (an Intel laptop needs iHD) breaks VA-API hardware video decoding.
 
 -- ▓▒░ HOST-SPECIFIC OVERRIDES
--- Anything tied to one machine's hardware (e.g. DXVK_FILTER_DEVICE_NAME naming
--- a specific GPU) belongs in the host profile, not here.
+-- Anything tied to one machine's hardware (e.g. AMD_VULKAN_ICD naming a GPU
+-- vendor) belongs in the host profile, not here.
 for key, val in pairs((host and host.env) or {}) do
     hl.env(key, val)
 end

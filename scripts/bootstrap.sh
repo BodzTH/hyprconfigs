@@ -129,5 +129,4 @@ echo -e "${GREEN}${BOLD}====================================================${RE
 echo -e "Reboot to log into Hyprland via SDDM."
 echo -e "To customize hardware profile for this machine:"
 echo -e "  1. Check/edit: ${BOLD}~/.config/hypr/hosts/\$(hostname).lua${RESET}"
-echo -e "  2. Edit:       ${BOLD}chezmoi edit ~/.config/uwsm/env${RESET}"
-echo -e "  3. Apply:      ${BOLD}chezmoi apply${RESET}\n"
+echo -e "  2. Apply:      ${BOLD}chezmoi apply${RESET}\n"

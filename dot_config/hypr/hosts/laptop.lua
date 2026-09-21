@@ -21,7 +21,17 @@ return {
         -- "0000:01:00.0",   -- dGPU — fallback
     },
 
-    env     = {},
+    -- GPU-vendor env goes here, never in modules/environment.lua. libva usually
+    -- picks the right VA-API driver itself; set it only if hardware video
+    -- decoding fails (`vainfo` shows which driver loaded).
+    env     = {
+        -- LIBVA_DRIVER_NAME = "iHD",        -- Intel
+        -- LIBVA_DRIVER_NAME = "radeonsi",   -- AMD
+        -- LIBVA_DRIVER_NAME = "nvidia",             -- NVIDIA
+        -- GBM_BACKEND = "nvidia-drm",               -- NVIDIA
+        -- __GLX_VENDOR_LIBRARY_NAME = "nvidia",     -- NVIDIA
+        -- NVD_BACKEND = "direct",                   -- NVIDIA
+    },
     apps    = {},
     devices = {},
 }
