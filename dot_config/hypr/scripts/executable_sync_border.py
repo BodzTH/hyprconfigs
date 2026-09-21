@@ -132,6 +132,8 @@ def apply(hex_color):
         subprocess.Popen(["openrgb", "--noautoconnect", "-m", "static", "-c", hex_color],
                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
+    # Group borders are deliberately not synced: group theming is archived in
+    # ~/.config/config_archive/hypr/groups.lua, which carries this eval's group variant.
     border = f'{{ "rgba({hex_color}ee)", "rgba({hex_color}00)" }}'
     lua = f"hl.config({{ general = {{ col = {{ active_border = {{ colors = {border}, angle = 45 }} }} }} }})"
     subprocess.run(["hyprctl", "eval", lua], capture_output=True, timeout=2.0)

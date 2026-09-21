@@ -19,6 +19,14 @@ hl.config({
         },
         resize_on_border = true,
         layout           = "dwindle",
+
+        -- Floating windows snap to monitor edges and to each other when dragged
+        -- within 10px. respect_gaps spaces snapped windows by gaps_in, the same
+        -- rhythm as the tiled layout, instead of butting their borders together.
+        snap = {
+            enabled      = true,
+            respect_gaps = true,
+        },
     },
 
     -- ▓▒░ DECORATION & VISUAL EFFECTS
@@ -62,10 +70,18 @@ hl.config({
         dim_strength = 0.1,
     },
 
+    -- NOTE: no `group` block. Group (tabbed window) theming is archived in
+    --       ~/.config/config_archive/hypr/groups.lua, together with its tab
+    --       navigation and sync_border.py's group accent; groups (SUPER+CTRL+G)
+    --       use Hyprland's stock colors. Restore from there instead of rebuilding.
+
     -- ▓▒░ RENDERING & OPTIMIZATION
     render = {
-        direct_scanout        = 2,
+        -- direct_scanout        = 2,
         new_render_scheduling = true,
+        -- NOTE: direct_scanout is commented out with the other gaming settings —
+        --       this machine isn't used for gaming. 2 meant "auto", i.e. only for
+        --       content type "game", so nothing changes: the default is 0 (off).
     },
 
     -- ▓▒░ XWAYLAND SCALING FIX

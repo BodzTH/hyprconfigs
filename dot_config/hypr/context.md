@@ -23,13 +23,21 @@ Systemd units live in `systemd/` here and are symlinked out by `scripts/bootstra
 
 ## Host portability
 
-One tree runs on multiple machines. `hosts/init.lua` reads `hostname` and loads
-`hosts/<hostname>.lua`, falling back to `hosts/default.lua`.
+One tree runs on multiple machines. `hosts/init.lua` reads the hostname from
+`/proc/sys/kernel/hostname` (the `hostname` binary is only a fallback — on Arch it
+comes from `inetutils`, which is not in `base`) and loads `hosts/<hostname>.lua`,
+falling back to `hosts/default.lua`.
 
 A host profile supplies five keys — `monitors`, `gpu`, `env`, `apps`, `devices`.
 Modules consume them; **modules never hardcode machine-specific values.** If you
 are about to write a resolution, a GPU, a device name or a GPU-specific env var
 into `modules/`, it belongs in the host profile instead.
+
+`AMD_VULKAN_ICD` and `LIBVA_DRIVER_NAME` were exactly that — they sat in
+`modules/environment.lua` until 2026-09-21, which would have handed an Intel laptop
+`LIBVA_DRIVER_NAME=radeonsi` and broken its hardware video decoding. They live in
+`hosts/hyprcachyos.lua` now. Only vendor-neutral Mesa driconf options stay in the
+module.
 
 Adding a machine = one new `hosts/<hostname>.lua` + run `scripts/bootstrap.sh`. No
 module edits. Keep it that way.
@@ -125,16 +133,41 @@ dark and unlocked, which reads as locked and is not.
 There is deliberately **no lid-switch bind**. Lid handling belongs to logind; closing
 the lid raises `PrepareForSleep`, which `before_sleep_cmd` already locks on.
 
+`misc.allow_session_lock_restore` is on (`modules/layouts.lua`). If hyprlock
+crashes, the session stays locked behind Hyprland's "lockscreen app died" screen;
+recover from a TTY with
+`hyprctl --instance 0 dispatch 'hl.dsp.exec_cmd("hyprlock")'`. Without that option
+no replacement locker is accepted.
+
 ## Runtime border color
 
 `scripts/sync_border.py` extracts a color from the wallpaper and writes it into
 `hyprlock.conf`, `hyprtoolkit.conf`, the GTK 3/4 stylesheets, OpenRGB, and the live
-border via `hyprctl eval`.
+border via `hyprctl eval`. Group borders are deliberately not synced — group theming
+is archived (see below).
 
 Two consequences. First, **those files are rewritten at runtime** — a border/accent
 color you read there is not necessarily what the repo intends. Second, a config
 reload re-applies `appearance.lua`'s static border and wipes it, which is why
 `modules/autostart.lua` re-runs the script on `config.reloaded`.
+
+## Archived and commented-out config
+
+This machine isn't used for gaming, so gaming-only settings are **commented out in
+place**, each with a NOTE: `render.direct_scanout` (`modules/appearance.lua`),
+`cursor.no_break_fs_vrr` and `min_refresh_rate` (`modules/input.lua`), the Mesa
+`mesa_glthread` / `vk_xwayland_wait_ready` env (`modules/environment.lua`) and
+`DXVK_FILTER_DEVICE_NAME` (`hosts/hyprcachyos.lua`). Uncomment to bring them back.
+`misc.vrr = 3` stays on deliberately: mode 3 also covers fullscreen video, which mpv
+reports as content type `video`.
+
+Retired config goes to `~/.config/config_archive/` — outside this tree and outside
+chezmoi, and nothing loads it. Group (tabbed window) theming, its tab navigation and
+`sync_border.py`'s group accent were archived there on 2026-09-21 as
+`config_archive/hypr/groups.lua`; groups (SUPER+CTRL+G) use stock colors meanwhile.
+To restore, paste its pieces back into this tree as its header describes. Never
+`require()` it from there — that would put live config outside the tree, which is
+exactly what the one rule forbids.
 
 ## Verifying a change
 

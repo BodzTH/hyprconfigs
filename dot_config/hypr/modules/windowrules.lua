@@ -44,6 +44,15 @@ hl.layer_rule({
     ignore_alpha = 0.2,
 })
 
+-- Clipboard history holds whatever was copied — passwords, tokens, keys. Keep
+-- the panel out of screen shares and recordings; it is drawn there as a black
+-- box instead.
+hl.layer_rule({
+    name            = "clipboard-no-screenshare",
+    match           = { namespace = "^quickshell-clipboard$" },
+    no_screen_share = true,
+})
+
 -- Blur hyprtoolkit & hyprshutdown layers & dialogs
 hl.layer_rule({
     name         = "blur-hyprtoolkit",
@@ -89,5 +98,22 @@ hl.window_rule({
     match  = { class = "^(com.gabm.satty)$" },
     float  = true,
     center = true,
+})
+
+-- ▓▒░ AUTHENTICATION PROMPTS
+-- hyprpolkitagent (polkit), gcr-prompter (ssh key passphrases for
+-- gcr-ssh-agent) and any pinentry. stay_focused is the point: with
+-- follow_mouse = 1, nudging the mouse onto another window mid-password moves
+-- keyboard focus there, and the rest of the password is typed into it.
+-- NOTE: hyprpolkitagent is a plain Qt window, not a layer surface, so the
+--       hyprpolkitagent alternative in blur-hyprtoolkit above never matches
+--       it. dim_around here is what actually dims behind the polkit prompt.
+hl.window_rule({
+    name         = "auth-prompts",
+    match        = { class = "^(hyprpolkitagent|gcr-prompter|pinentry-.*)$" },
+    float        = true,
+    center       = true,
+    stay_focused = true,
+    dim_around   = true,
 })
 

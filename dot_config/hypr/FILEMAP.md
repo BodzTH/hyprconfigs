@@ -29,16 +29,16 @@ modules that need them.
 
 | File | L | Owns | Reads |
 |---|---:|---|---|
-| `modules/environment.lua` | 96 | All `hl.env()`. GPU PCI→cardN resolver. Cursor, GTK, Qt, toolkit, AMD, `SSH_AUTH_SOCK` | `hosts` (`.gpu`, `.env`) |
+| `modules/environment.lua` | 100 | All `hl.env()`. GPU PCI→cardN resolver. Cursor, GTK, Qt, toolkit, `SSH_AUTH_SOCK`. Mesa gaming vars commented out. No vendor-specific vars — those are host `env` | `hosts` (`.gpu`, `.env`) |
 | `modules/variables.lua` | 35 | App aliases — terminal, browser, editor, file manager | `hosts` (`.apps`) |
 | `modules/monitors.lua` | 14 | Thin loop calling `hl.monitor()` | `hosts` (`.monitors`) |
-| `modules/appearance.lua` | 76 | Borders, rounding, blur, shadow, opacity, dim, render | — |
+| `modules/appearance.lua` | 92 | Borders, floating-window snap, rounding, blur, shadow, opacity, dim, render (`direct_scanout` commented out) | — |
 | `modules/animations.lua` | 44 | 8 bezier curves, 17 animation leaves | — |
-| `modules/input.lua` | 50 | Keyboard (`us,ara`), touchpad, cursor/VRR, gestures, per-device | `hosts` (`.devices`) |
-| `modules/layouts.lua` | 60 | Dwindle, `misc`, `binds`, `ecosystem` | — |
+| `modules/input.lua` | 54 | Keyboard (`us,ara`), touchpad, cursor (gaming VRR lines commented out), gestures, per-device | `hosts` (`.devices`) |
+| `modules/layouts.lua` | 71 | Dwindle, `misc` (incl. `font_family`, lock-restore), `binds`, `ecosystem` | — |
 | `modules/autostart.lua` | 90 | Starts/stops `hyprland-session.target`; awww-socket-sequenced wallpaper restore + border sync | — |
 | `modules/keybindings.lua` | 172 | Every bind. Largest file | `variables` |
-| `modules/windowrules.lua` | 93 | Window/layer/workspace rules, smart gaps, quickshell blur | — |
+| `modules/windowrules.lua` | 119 | Window/layer/workspace rules, smart gaps, quickshell blur, auth prompts keep focus, clipboard panel hidden from screenshare | — |
 
 **There are exactly these 10 modules.** A consolidation into `session.lua` /
 `look.lua` / `keys.lua` (plus a top-level `host.lua`) was started and purged on
@@ -56,9 +56,9 @@ that way.
 
 | File | L | Notes |
 |---|---:|---|
-| `hosts/init.lua` | 16 | Reads `hostname`, loads matching profile, falls back to `default` |
-| `hosts/hyprcachyos.lua` | 40 | Main desktop. 1080p@165Hz, RX 7700 XT `0000:03:00.0` + Raphael iGPU `0000:0e:00.0`, G305 mouse |
-| `hosts/laptop.lua` | 27 | Template. Rename to the laptop's hostname to activate. `gpu` commented out |
+| `hosts/init.lua` | 34 | Reads `/proc/sys/kernel/hostname` (`hostname` binary as fallback), loads matching profile, falls back to `default` |
+| `hosts/hyprcachyos.lua` | 56 | Main desktop. Acer VG240Y S matched by `desc:` at 1080p@165Hz + catch-all for other displays. RX 7700 XT `0000:03:00.0` + Raphael iGPU `0000:0e:00.0`, AMD vendor env (`DXVK_FILTER_DEVICE_NAME` commented out), G305 mouse |
+| `hosts/laptop.lua` | 33 | Template. Rename to the laptop's hostname to activate. `gpu` and `LIBVA_DRIVER_NAME` commented out |
 | `hosts/default.lua` | 17 | Fallback — empty everything, auto-detect |
 
 Profile keys: `monitors`, `gpu` (PCI addresses, primary first), `env`, `apps`, `devices`.
@@ -68,7 +68,7 @@ Profile keys: `monitors`, `gpu` (PCI addresses, primary first), `env`, `apps`, `
 | File | L | Trigger | Does |
 |---|---:|---|---|
 | `scripts/bootstrap.sh` | 72 | **Manual, once per host** | Symlinks `systemd/*.service` and `*.target` → `~/.config/systemd/user`, enables 7 units. Idempotent; skips units not installed, warns and continues on a failed enable |
-| `scripts/sync_border.py` | 158 | `SUPER+SHIFT+W`, wallpaper change, `config.reloaded`, login | Wallpaper → accent color. **Rewrites** `hyprlock.conf`, `hyprtoolkit.conf`, GTK 3/4 CSS, OpenRGB, live border |
+| `scripts/sync_border.py` | 160 | `SUPER+SHIFT+W`, wallpaper change, `config.reloaded`, login | Wallpaper → accent color. **Rewrites** `hyprlock.conf`, `hyprtoolkit.conf`, GTK 3/4 CSS, OpenRGB, live border |
 | `scripts/awww_transition.sh` | 25 | `SUPER+SHIFT+W`, quickshell WallpaperSelector | Random/explicit wallpaper at monitor refresh rate; calls `sync_border.py` |
 | `scripts/pick_rgb.fish` | 14 | `SUPER+SHIFT+P` | `hyprpicker` → OpenRGB static LED color |
 | `scripts/showcase.sh` | — | `SUPER+Print` | Lives in the **chezmoi source tree**, not here — resolved via `chezmoi source-path` |
@@ -94,7 +94,7 @@ Package-provided units `bootstrap.sh` also enables: `hypridle.service`,
 | File | L | Notes |
 |---|---:|---|
 | `hypridle.conf` | 50 | 600s lock → 630s blank → 2700s suspend. Sole definition of `lock_cmd` |
-| `hyprlock.conf` | 92 | Lock screen. `$accent` is **rewritten by `sync_border.py`** |
+| `hyprlock.conf` | 94 | Lock screen. `$accent` is **rewritten by `sync_border.py`** |
 | `hyprtoolkit.conf` | 22 | Toolkit theme tokens. `accent` also rewritten at runtime |
 
 ## External trees this depends on
@@ -106,6 +106,7 @@ Package-provided units `bootstrap.sh` also enables: `hypridle.service`,
 | `~/.config/systemd/user/` | Symlinks to `systemd/`, created by `bootstrap.sh` |
 | `~/.config/gtk-3.0`, `gtk-4.0` | `gtk.css` rewritten by `sync_border.py` |
 | `~/Pictures/Wallpapers` | Source pool for `awww_transition.sh` |
+| `~/.config/config_archive/hypr/` | Retired config, untracked and never loaded. `groups.lua` = archived group theming + tab navigation + `sync_border.py` group accent (2026-09-21); the rest is a June snapshot of the old config |
 
 ## Keybinding groups
 
