@@ -1,103 +1,106 @@
 import QtQuick
-import Quickshell
-import ".."
-import "../services"
-import "../panels"
+import qs
+import qs.services
 
-Rectangle {
-    id: networkWidget
+// NetworkWidget — one bar item for the network: connection icon + ↓↑ speeds.
+// Merges the old NetworkWidget and NetworkSpeedWidget (both archived in
+// ~/.config/config_archive/quickshell/). Click (or Enter/Space from the bar's
+// keyboard mode) drops the network panel down from here.
+//
+// Neutral by default; an arrow turns accent only while traffic flows that way,
+// so the item says "something is downloading" without shouting all day.
+BarItem {
+    id: widget
 
     required property var parentWindow
 
-    readonly property string netType: NetworkService.type
-    readonly property string netSsid: NetworkService.ssid
-    readonly property bool isConnected: netType !== "none"
+    // Above background chatter (DNS, NTP, keepalives) before an arrow lights up.
+    readonly property real activityKiB: 8
+    readonly property bool downActive: SysMonitorService.downloadSpeed > activityKiB
+    readonly property bool upActive: SysMonitorService.uploadSpeed > activityKiB
 
-    function getIcon() {
-        if (NetworkService.vpnActive) return "󰌾";
-        if (netType === "wifi") return "󰖩";
-        if (netType === "ethernet") return "󰈀";
-        return "󰖪";
+    function icon() {
+        if (!NetworkService.ready) return "󰤮";
+        if (NetworkService.type === "ethernet") return "󰈀";
+        if (NetworkService.type === "wifi") {
+            var s = NetworkService.activeWifi ? NetworkService.activeWifi.signalStrength : 0;
+            return s > 0.75 ? "󰤨" : s > 0.5 ? "󰤥" : s > 0.25 ? "󰤢" : "󰤟";
+        }
+        return NetworkService.wifiEnabled ? "󰤯" : "󰤮";
     }
 
-    function getText() {
-        if (netType === "wifi") return netSsid || "WiFi";
-        if (netType === "ethernet") return netSsid || "Ethernet";
-        return "Disconnected";
+    // KiB/s from SysMonitorService → "512K" / "1.2M" / "12M"
+    function formatSpeed(kib) {
+        if (kib < 1000) return Math.round(kib) + "K";
+        var mib = kib / 1024;
+        return (mib < 10 ? mib.toFixed(1) : Math.round(mib)) + "M";
     }
 
-    height: 28
+    function toggle() {
+        // Centre of this item in screen coordinates: the bar window starts at
+        // its left margin (Bar.qml `margins.left`).
+        var r = parentWindow.itemRect(widget);
+        root.toggleNetwork(parentWindow.screen, parentWindow.margins.left + r.x + r.width / 2);
+    }
+
     width: contentRow.implicitWidth + 16
-    radius: 6
-    antialiasing: true
+    HoverHandler { id: hover; cursorShape: Qt.PointingHandCursor }
 
-    activeFocusOnTab: true
-    HoverHandler { id: networkHover }
-    property bool isHoveredOrFocused: networkHover.hovered || networkWidget.activeFocus
-    color: isHoveredOrFocused ? Theme.hoverBg : "transparent"
-
-
-    Behavior on color { ColorAnimation { duration: 150 } }
+    Keys.onReturnPressed: toggle()
+    Keys.onSpacePressed: toggle()
 
     Row {
         id: contentRow
         anchors.centerIn: parent
-        spacing: isHoveredOrFocused ? 4 : 0
-
-        Behavior on spacing { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
-
-        Item {
-            anchors.verticalCenter: parent.verticalCenter
-            width: 16; height: 16
-
-            Text {
-                id: networkIcon
-                anchors.centerIn: parent
-                verticalAlignment: Text.AlignVCenter
-                color: NetworkService.vpnActive ? Theme.success
-                    : isConnected ? Theme.accent : Theme.error
-                font.family: Theme.fontMain
-                font.pixelSize: 14
-                renderType: Text.NativeRendering
-                text: networkWidget.getIcon()
-                Behavior on color { ColorAnimation { duration: 200 } }
-            }
-        }
+        spacing: 8
 
         Text {
-            id: networkText
             anchors.verticalCenter: parent.verticalCenter
-            verticalAlignment: Text.AlignVCenter
-            color: isConnected ? Theme.text : Theme.error
+            text: widget.icon()
+            color: NetworkService.type === "none" ? Theme.subtext0 : Theme.text
             font.family: Theme.fontMain
-            font.pixelSize: 10
-            font.weight: Font.Bold
-            renderType: Text.NativeRendering
-
-            clip: true
-            width: isHoveredOrFocused ? implicitWidth : 0
-            opacity: isHoveredOrFocused ? 1.0 : 0.0
-
-            Behavior on width { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
-            Behavior on opacity { NumberAnimation { duration: 200 } }
-
-            text: networkWidget.getText()
+            font.pixelSize: 14
         }
-    }
 
-    Keys.onReturnPressed: root.toggleNetwork()
-    Keys.onSpacePressed: root.toggleNetwork()
+        // Speeds only while connected — nothing to measure otherwise.
+        Row {
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 6
+            visible: NetworkService.type !== "none"
 
-    MouseArea {
-        anchors.fill: parent
-        acceptedButtons: Qt.LeftButton | Qt.RightButton
-        cursorShape: Qt.PointingHandCursor
-        onClicked: (mouse) => {
-            if (mouse.button === Qt.LeftButton) {
-                root.toggleNetwork();
-            } else if (mouse.button === Qt.RightButton) {
-                NetworkService.openManager();
+            Repeater {
+                model: [
+                    { glyph: "󰇚", active: widget.downActive, value: SysMonitorService.downloadSpeed },
+                    { glyph: "󰕒", active: widget.upActive, value: SysMonitorService.uploadSpeed }
+                ]
+
+                delegate: Row {
+                    id: speed
+                    required property var modelData
+                    spacing: 3
+                    anchors.verticalCenter: parent.verticalCenter
+
+                    Text {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: speed.modelData.glyph
+                        color: speed.modelData.active ? Theme.accent : Theme.subtext0
+                        font.family: Theme.fontMain
+                        font.pixelSize: 13
+                        Behavior on color { ColorAnimation { duration: 200 } }
+                    }
+                    Text {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: widget.formatSpeed(speed.modelData.value)
+                        color: Theme.text
+                        font.family: Theme.fontMain
+                        font.pixelSize: 11
+                        font.weight: Font.Bold
+                        renderType: Text.NativeRendering
+                    }
+                }
             }
         }
     }
+
+    TapHandler { onTapped: widget.toggle() }
 }

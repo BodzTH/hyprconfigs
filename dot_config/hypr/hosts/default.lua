@@ -9,6 +9,12 @@ return {
             scale    = 1,
         },
     },
-    apps = {},
+    -- Empty: let Aquamarine auto-detect GPUs. Correct default on unknown hardware.
+    gpu     = {},
+    env     = {},
+    -- Top-level `input` keys that differ on this machine, e.g.
+    --   input = { kb_layout = "us,de", kb_variant = ",nodeadkeys" },
+    input   = {},
+    apps    = {},
     devices = {},
 }

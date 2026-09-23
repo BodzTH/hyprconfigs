@@ -19,12 +19,23 @@ To reproduce this exact environment on any Arch-based Linux installation (CachyO
 # 1. Install chezmoi and git
 sudo pacman -S --needed chezmoi git
 
-# 2. Initialize and apply dotfiles
+# 2. Initialize and apply dotfiles (asks once for the name shown on the lock
+#    screen and greeter; add --promptDefaults to take your account name)
 chezmoi init --apply BodzTH/hyprconfigs
 
 # 3. Run the bootstrap script to install all packages and enable services
 ~/.local/share/chezmoi/scripts/bootstrap.sh
 ```
+
+Bootstrap is idempotent — re-run it any time. It fully upgrades the system (`pacman -Syu`),
+installs the package manifests plus the GPU stack for the detected vendor, fetches the two
+themes that aren't in the Arch repos (Graphite-Dark GTK, Catppuccin Mocha cursors), installs
+the SDDM greeter, and links/enables the Hyprland session's systemd user units.
+
+Nothing machine-specific needs editing to get a working desktop: monitors fall back to each
+display's preferred mode, GPUs are auto-detected, and your username/home path are filled in
+by chezmoi templates. To tune a machine, add a host profile (see
+[Hardware Portability](#hardware-portability-system)).
 
 ---
 
@@ -32,8 +43,7 @@ chezmoi init --apply BodzTH/hyprconfigs
 
 | Component | Choice | Description |
 | :--- | :--- | :--- |
-| **Compositor** | [Hyprland](https://hyprland.org/) | Modular Lua configuration (`hyprland.lua`) |
-| **Session Manager** | [UWSM](https://github.com/Vladimir-csp/uwsm) | Universal Wayland Session Manager with systemd integration |
+| **Compositor** | [Hyprland](https://hyprland.org/) | Modular Lua configuration (`hyprland.lua`), launched directly — no session manager wrapper |
 | **Greeter** | [SDDM](https://github.com/sddm/sddm) | Custom `hypr-sddm` theme (fork of sddm-astronaut), autologin into Hyprland |
 | **Status Bar & UI** | [QuickShell](https://quickshell.outfoxxed.me/) | Custom QML bar, app launcher, clipboard, and notifications |
 | **Terminal** | [Kitty](https://sw.kovidgoyal.net/kitty/) | Default terminal everywhere (Ghostty also installed, not default) |
@@ -45,7 +55,7 @@ chezmoi init --apply BodzTH/hyprconfigs
 | **Idle Daemon** | [hypridle](https://wiki.hypr.land/Hypr-Ecosystem/hypridle/) | Automated screen blanking & DPMS |
 | **Theming** | HyprBlur | Monochrome palette with Catppuccin Mocha Dark cursors |
 
-`hypr/scripts/sync_border.py` runs at login and on every wallpaper change (`awww_transition.sh`), picking a color from the wallpaper and writing it into the Hyprland border, `hyprlock.conf`, `hyprtoolkit.conf`, and the `gtk-3.0`/`gtk-4.0` CSS. The repo tracks those files with the static `#e5e5e5` accent as a seed — a live diff there is expected, not drift. Preview a wallpaper's color with `sync_border.py --dry-run <image>`.
+`hypr/scripts/sync_border.py` runs at login and on every wallpaper change (`awww_transition.sh`), picking a color from the wallpaper and writing it into the Hyprland border, `hyprlock.conf`, `hyprtoolkit.conf`, and the `gtk-3.0`/`gtk-4.0` CSS. Those files (plus kitty, starship and yazi's theme) are chezmoi templates that render the accent from `~/.local/state/hypr/accent`, so a wallpaper change never shows up as drift and `chezmoi apply` never reverts it; a fresh machine starts on the `#e5e5e5` seed. Because they are templates, `chezmoi re-add` skips them — change them with `chezmoi edit --apply <file>`. Preview a wallpaper's color with `sync_border.py --dry-run <image>`.
 
 ---
 
@@ -74,18 +84,22 @@ return {
         -- Catch-all: any docked/external display, auto-placed to the right.
         { output = "",      mode = "preferred", position = "auto", scale = 1 },
     },
+    input = { kb_layout = "us" },   -- overrides modules/input.lua's defaults
     apps = {},
     devices = {
         { name = "synps/2-synaptics-touchpad", sensitivity = 0.2 },
     },
 }
 ```
+Then track it so your other machines get it too: `chezmoi add ~/.config/hypr/hosts/<your-hostname>.lua`.
+Personal apps outside the package manager (`~/The-Plan`, `~/Apps/Antigravity`) are only bound
+where they're installed, so their keys simply don't exist elsewhere.
 
-### 2. Environment Variables & GPU Profiles (`~/.config/uwsm/`)
-The UWSM environment file is a Chezmoi Go template (`dot_config/uwsm/env.tmpl`). `AQ_DRM_DEVICES` is deliberately left unset — aquamarine picks the primary GPU on its own, and a hand-set list breaks easily (it's `:`-separated, so `/dev/dri/by-path/pci-0000:03:00.0-card` paths can't be used, and `/dev/dri/cardN` numbers can swap between boots). The GPU vendor is detected automatically at `chezmoi init` time by reading `/sys/class/drm/*/device/vendor` (discrete beats integrated on hybrid setups); it's cached in `~/.config/chezmoi/chezmoi.toml`, so re-run `chezmoi init` after swapping GPUs.
-- **AMD**: Activates RADV, `radeonsi`, and the DXVK device filter.
-- **NVIDIA**: Activates `nvidia-drm`, `__GLX_VENDOR_LIBRARY_NAME=nvidia`, and `NVD_BACKEND=direct`.
-- **Intel**: Activates `iHD` VA-API drivers.
+### 2. Environment Variables & GPU Profiles (`hosts/<hostname>.lua`)
+`modules/environment.lua` resolves each host's `gpu` list (PCI addresses, primary renderer first) to `/dev/dri/cardN` paths at launch and exports `AQ_DRM_DEVICES` — only when a profile lists GPUs; the default empty list lets Aquamarine auto-detect, which is correct on unknown hardware. PCI addresses are used because `/dev/dri/cardN` numbers can swap between boots and the stable `by-path` names contain `:`, which the variable uses as its own separator. GPU-vendor env vars live in the host profile itself, never in the shared module (see `hosts/hyprcachyos.lua`). The vendor used to pick the right `packages/80-gpu-*.txt` manifest is still detected automatically at `chezmoi init` time by reading `/sys/class/drm/*/device/vendor` (discrete beats integrated on hybrid setups) and cached in `~/.config/chezmoi/chezmoi.toml`; re-run `chezmoi init` after swapping GPUs.
+- **AMD**: `AMD_VULKAN_ICD=RADV`, `LIBVA_DRIVER_NAME=radeonsi`.
+- **NVIDIA**: `GBM_BACKEND=nvidia-drm`, `__GLX_VENDOR_LIBRARY_NAME=nvidia`, `NVD_BACKEND=direct`.
+- **Intel**: `LIBVA_DRIVER_NAME=iHD`.
 
 ---
 
@@ -108,10 +122,11 @@ Packages are split into logical manifests in `packages/`:
 
 Bootloader, kernel, and base-OS packages (limine, mkinitcpio, plymouth, `linux-*`, etc.) are
 **not** in these manifests — that's the base install's job, done once before this repo comes
-into play. **Not covered by the manifests** either (not packaged in the official repos, so
-`bootstrap.sh` can't install them — set these up manually before applying): the
-[Graphite GTK theme](https://github.com/vinceliuice/Graphite-gtk-theme) into
-`~/.themes/Graphite-Dark`, and the `catppuccin-mocha-dark-cursors` cursor theme.
+into play. Every manifest package is in the official Arch repos, so this works on vanilla Arch
+as well as CachyOS. Two themes aren't packaged there, so `bootstrap.sh` fetches them from
+upstream when missing: the [Graphite GTK theme](https://github.com/vinceliuice/Graphite-gtk-theme)
+(`--tweaks black`, into `~/.themes/Graphite-Dark`) and the
+[Catppuccin Mocha Dark cursors](https://github.com/catppuccin/cursors) (into `~/.local/share/icons`).
 
 ---
 
@@ -152,6 +167,8 @@ system/
 
 - **`etc/sddm.conf`** and **`usr/share/sddm/themes/hypr-sddm/`** are installed by
   `scripts/bootstrap.sh` (`sudo install`/`cp`, same pattern as the package manifests). The
+  tracked `theme.conf` is generic; bootstrap writes the greeter header (your chezmoi
+  `displayName`) to `theme.conf.user`, which SDDM layers on top. The
   theme's `Backgrounds/` isn't vendored — bootstrap copies `street.gif` and `black_bg.jpg` in
   from `Pictures/Wallpapers/` on every run, so the wallpaper stays in one place.
 - **`boot/limine.conf.header`** and **`etc/default/limine`** are **reference only**. Nothing in
@@ -174,6 +191,12 @@ chezmoi edit ~/.config/hypr/hyprland.lua
 
 # Add a newly created configuration file
 chezmoi add ~/.config/newapp/config
+
+# Pull edits made in ~/.config back into the repo (skips templates — see above)
+chezmoi re-add
+
+# Change per-machine data (display name; GPU is re-detected)
+chezmoi init
 
 # Re-apply repository state to the system
 chezmoi apply

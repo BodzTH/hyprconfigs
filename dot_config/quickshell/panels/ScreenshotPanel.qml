@@ -6,7 +6,7 @@ import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Hyprland
 import Quickshell.Services.Notifications as Notifs
-import ".."
+import qs
 
 // ScreenshotPanel — equivalent of the old rofi screenshot.sh
 // Triggered by: Print key (global shortcut) or bar button

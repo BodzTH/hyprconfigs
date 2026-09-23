@@ -15,7 +15,7 @@
 -- ▓▒░ MODULE LOAD ORDER
 -- Dependencies must be required before the modules that use them.
 
-require("modules.environment")   -- Env vars (cursor, Qt, GTK, AMD GPU, Wayland)
+require("modules.environment")   -- Env vars (cursor, Qt, GTK, Wayland, GPU selection)
 require("modules.monitors")      -- Display config: 1920x1080@165Hz
 require("modules.appearance")    -- Borders, blur, shadows, transparency
 require("modules.animations")    -- Bezier curves & animation tree

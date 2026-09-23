@@ -1,0 +1,15 @@
+[Unit]
+Description=quickshell — bar, launcher, clipboard, notifications, power menu
+Documentation=https://quickshell.outfoxxed.me/
+PartOf=graphical-session.target
+After=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/quickshell
+Restart=on-failure
+RestartSec=2
+Slice=app.slice
+
+[Install]
+WantedBy=graphical-session.target

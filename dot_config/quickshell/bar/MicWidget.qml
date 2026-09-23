@@ -2,24 +2,19 @@ import QtQuick
 import Quickshell
 import Quickshell.Services.Pipewire as Pw
 import Quickshell.Io
-import ".."
+import qs
 
-Rectangle {
+BarItem {
     id: micWidget
 
     readonly property var source: Pw.Pipewire.defaultAudioSource ? Pw.Pipewire.defaultAudioSource.audio : null
     readonly property bool isMuted: source ? source.muted : true
     readonly property int volumePct: source ? Math.round(source.volume * 100) : 0
 
-    height: 28
     width: contentRow.implicitWidth + 16
-    radius: 6
-    antialiasing: true
     
-    activeFocusOnTab: true
     HoverHandler { id: micHover }
     property bool isHoveredOrFocused: micHover.hovered || micWidget.activeFocus
-    color: isHoveredOrFocused ? Theme.hoverBg : "transparent"
     
 
     function toggleMute() {
@@ -30,7 +25,6 @@ Rectangle {
     Keys.onUpPressed: Quickshell.execDetached(["wpctl", "set-volume", "-l", "1.0", "@DEFAULT_AUDIO_SOURCE@", "0.02+"])
     Keys.onDownPressed: Quickshell.execDetached(["wpctl", "set-volume", "@DEFAULT_AUDIO_SOURCE@", "0.02-"])
 
-    Behavior on color { ColorAnimation { duration: 150 } }
 
     Row {
         id: contentRow

@@ -36,8 +36,9 @@ background              #111111
 selection_foreground    #111111
 selection_background    #e5e5e5
 
-# Cursor colors
-cursor                  #e5e5e5
+# Cursor colors (`cursor` is the wallpaper accent, rewritten by
+# ~/.config/hypr/scripts/sync_border.py; kitty auto-reloads)
+cursor                  #{{ template "accent" . }}
 cursor_text_color       #111111
 
 # Scrollbar colors

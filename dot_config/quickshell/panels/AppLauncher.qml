@@ -5,7 +5,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Hyprland
-import ".."
+import qs
 
 // AppLauncher — replaces rofi -show drun
 // Triggered by: SUPER+A (global shortcut)
@@ -43,9 +43,21 @@ PanelWindow {
         }
     }
 
-    // ▓▒░ DETACHED LAUNCH LOGIC
-    // Strips desktop entry field codes (like %U) and spawns process detached
-    // so it doesn't get terminated if Quickshell reloads.
+    // ▓▒░ LAUNCH LOGIC — strips desktop entry field codes (like %U), then starts
+    // the app in its own transient systemd scope.
+    //
+    // The scope is not cosmetic. Quickshell.execDetached detaches the *process*
+    // but not the *cgroup*: a bare execDetached child reparents to init and stays
+    // inside quickshell.service, which is KillMode=control-group with
+    // Restart=on-failure. So if quickshell ever crashed or was restarted, systemd
+    // tore down its control group and every app ever launched from here -- editor,
+    // browser, everything -- died with it. The old comment on this function
+    // claimed detaching already prevented that. It did not.
+    //
+    // systemd-run makes each app a sibling of quickshell.service under app.slice
+    // instead of a child, which is also what `man 7 systemd.special` prescribes for
+    // interactively launched applications. Each app then gets its own cgroup, so it
+    // can be inspected and stopped on its own:  systemctl --user list-units --type=scope
     function launchApp(app) {
         var cmdList = [];
         if (app.command) {
@@ -54,11 +66,14 @@ PanelWindow {
             });
         }
         if (cmdList.length === 0) return;
-        
+
         if (app.runInTerminal) {
             cmdList = ["kitty", "-e"].concat(cmdList);
         }
-        Quickshell.execDetached(cmdList);
+        Quickshell.execDetached([
+            "systemd-run", "--user", "--scope", "--quiet", "--collect",
+            "--slice=app.slice", "--description=" + (app.name || cmdList[0])
+        ].concat(cmdList));
         launcherWindow.visible = false;
     }
 
@@ -189,7 +204,10 @@ PanelWindow {
                     implicitWidth: 4
                     radius: 2
                     antialiasing: true
-                    color: Theme.text
+                    // Wallpaper accent (set live by sync_border.py); brighter
+                    // while it is being dragged.
+                    color: parent.pressed ? Qt.lighter(Theme.accent, 1.3) : Theme.accent
+                    Behavior on color { ColorAnimation { duration: 150 } }
                 }
                 background: Item {}
             }

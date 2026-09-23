@@ -4,7 +4,7 @@ import Quickshell
 import Quickshell.Wayland
 import Quickshell.Hyprland
 import Quickshell.Io
-import ".."
+import qs
 
 PanelWindow {
     id: bar
@@ -91,7 +91,7 @@ PanelWindow {
             }
         }
 
-        // RIGHT MODULE: SysMonitor, Keyboard, Audio, Mic, Network, Battery, Tray, Power
+        // RIGHT MODULE: SysMonitor, Keyboard, Audio, Mic, Network, Battery, Notifications, Tray, Power
         Rectangle {
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
@@ -109,10 +109,11 @@ PanelWindow {
                 KeyboardLayout {}
                 AudioWidget {}
                 MicWidget {}
-                NetworkSpeedWidget {}
-                NetworkWidget { parentWindow: bar }
+                NetworkWidget { parentWindow: bar }   // icon + ↓↑ speeds (was NetworkSpeedWidget + NetworkWidget)
                 BluetoothWidget { parentWindow: bar }
                 BatteryWidget {}
+                NotificationButton {}
+                CheatsheetButton {}
                 ScreenshotButton { parentWindow: bar }
                 SystemTray { parentWindow: bar }
                 PowerButton { parentWindow: bar }

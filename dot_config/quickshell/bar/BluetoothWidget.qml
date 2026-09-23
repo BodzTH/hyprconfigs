@@ -1,11 +1,11 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import ".."
-import "../services"
-import "../panels"
+import qs
+import qs.services
+import qs.panels
 
-Rectangle {
+BarItem {
     id: bluetoothWidget
 
     required property var parentWindow
@@ -26,18 +26,12 @@ Rectangle {
         return "On";
     }
 
-    height: 28
     width: contentRow.implicitWidth + 16
-    radius: 6
-    antialiasing: true
 
-    activeFocusOnTab: true
     HoverHandler { id: bluetoothHover }
     property bool isHoveredOrFocused: bluetoothHover.hovered || bluetoothWidget.activeFocus
-    color: isHoveredOrFocused ? Theme.hoverBg : "transparent"
 
 
-    Behavior on color { ColorAnimation { duration: 150 } }
 
     Row {
         id: contentRow
@@ -88,8 +82,13 @@ Rectangle {
     Keys.onReturnPressed: BluetoothService.toggle()
     Keys.onSpacePressed: BluetoothService.toggle()
 
+    // Own scope, not quickshell.service's cgroup — see panels/AppLauncher.qml.
     function openManager() {
-        Quickshell.execDetached(["sh", "-c", "blueman-manager || overskride || gnome-control-center bluetooth || ghostty -e bluetoothctl || kitty -e bluetoothctl || alacritty -e bluetoothctl || foot -e bluetoothctl || xterm -e bluetoothctl"]);
+        Quickshell.execDetached([
+            "systemd-run", "--user", "--scope", "--quiet", "--collect",
+            "--slice=app.slice", "--description=bluetooth manager",
+            "sh", "-c", "blueman-manager || overskride || gnome-control-center bluetooth || ghostty -e bluetoothctl || kitty -e bluetoothctl || alacritty -e bluetoothctl || foot -e bluetoothctl || xterm -e bluetoothctl"
+        ]);
     }
 
     MouseArea {

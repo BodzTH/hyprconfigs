@@ -1,8 +1,8 @@
 import QtQuick
 import Quickshell.Services.UPower as Up
-import ".."
+import qs
 
-Rectangle {
+BarItem {
     id: batteryWidget
 
     readonly property var bat: Up.UPower.displayDevice
@@ -10,18 +10,12 @@ Rectangle {
     readonly property bool onBat: Up.UPower.onBattery
     readonly property int batPct: bat ? Math.round(bat.percentage) : 0
 
-    height: 28
     width: contentRow.implicitWidth + 16
-    radius: 6
-    antialiasing: true
     
-    activeFocusOnTab: true
     HoverHandler { id: batteryHover }
     property bool isHoveredOrFocused: batteryHover.hovered || batteryWidget.activeFocus
-    color: isHoveredOrFocused ? Theme.hoverBg : "transparent"
     
 
-    Behavior on color { ColorAnimation { duration: 150 } }
     visible: hasBat
 
     Row {

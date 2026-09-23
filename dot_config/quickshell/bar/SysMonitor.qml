@@ -1,31 +1,30 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
-import ".."
-import "../services"
+import qs
+import qs.services
 
-Rectangle {
+BarItem {
     id: sysMonitorWidget
 
-    height: 28
     width: contentLayout.implicitWidth + 20
-    radius: 6
-    antialiasing: true
     
-    activeFocusOnTab: true
     HoverHandler { id: sysMonitorHover }
     property bool isHoveredOrFocused: sysMonitorHover.hovered || sysMonitorWidget.activeFocus
 
-    color: isHoveredOrFocused ? Theme.hoverBg : "transparent"
     
 
-    Behavior on color { ColorAnimation { duration: 150 } }
 
     property bool showMemGb: true
 
     TapHandler {
         onTapped: {
-            Quickshell.execDetached(["kitty", "-e", "btop"])
+            // Own scope, not quickshell.service's cgroup — see panels/AppLauncher.qml.
+            Quickshell.execDetached([
+                "systemd-run", "--user", "--scope", "--quiet", "--collect",
+                "--slice=app.slice", "--description=btop",
+                "kitty", "-e", "btop"
+            ])
         }
     }
 

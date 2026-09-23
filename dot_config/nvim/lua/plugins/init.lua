@@ -15,6 +15,14 @@ return {
 
   {
     "nvim-treesitter/nvim-treesitter",
+    -- nvim-treesitter (main) keeps highlight queries in runtime/queries and only
+    -- copies them into place on :TSInstall. Parsers installed by the system
+    -- package manager (e.g. pacman's tree-sitter-python) never get them, so the
+    -- buffer renders all white. Append (not prepend) so Neovim's bundled queries
+    -- still win for its bundled parsers (lua, vim, markdown, ...).
+    init = function(plugin)
+      vim.opt.rtp:append(plugin.dir .. "/runtime")
+    end,
     opts = {
       ensure_installed = {
         "vim", "vimdoc", "query",
@@ -22,6 +30,8 @@ return {
         "json", "jsonc", "yaml", "toml",
         "markdown", "markdown_inline",
         "bash", "diff", "gitcommit",
+        "python",
+        "qmljs", "fish",
       },
     },
   },

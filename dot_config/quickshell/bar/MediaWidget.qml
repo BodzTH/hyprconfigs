@@ -1,18 +1,13 @@
 import QtQuick
 import Quickshell.Services.Mpris
-import ".."
+import qs
 
-Rectangle {
+BarItem {
     id: mediaWidget
 
-    height: 28
     width: visible ? Math.min(300, contentRow.implicitWidth + 20) : 0
-    radius: 6
-    antialiasing: true
     
-    activeFocusOnTab: true
     HoverHandler { id: mediaHover }
-    color: mediaHover.hovered || mediaWidget.activeFocus ? Theme.hoverBg : "transparent"
     
 
     function toggleMedia() {
@@ -23,9 +18,15 @@ Rectangle {
     Keys.onReturnPressed: toggleMedia()
     Keys.onSpacePressed: toggleMedia()
 
-    Behavior on color { ColorAnimation { duration: 150 } }
 
-    property MprisPlayer activePlayer: Mpris.players.count > 0 ? Mpris.players.get(0) : null
+    // The player that is actually playing, else the first one. Mpris.players is
+    // an ObjectModel: it has `.values`, not `.count`/`.get()` — the old
+    // `players.count > 0 ? players.get(0)` was always null, so this widget
+    // never appeared.
+    property MprisPlayer activePlayer: {
+        var players = Mpris.players.values;
+        return players.find(p => p.playbackState === MprisPlaybackState.Playing) || players[0] || null;
+    }
     readonly property bool isPlaying: activePlayer && activePlayer.playbackState === MprisPlaybackState.Playing
     readonly property bool hasMedia: activePlayer && activePlayer.trackTitle !== ""
 

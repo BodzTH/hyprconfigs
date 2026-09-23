@@ -1,25 +1,19 @@
 import QtQuick
 import Quickshell
 import Quickshell.Wayland
-import ".."
+import qs
 
-Rectangle {
+BarItem {
     id: idleInhibitorWidget
 
-    height: 28
     width: contentRow.implicitWidth + 16
-    radius: 6
-    antialiasing: true
     
-    activeFocusOnTab: true
     HoverHandler { id: hover }
-    color: hover.hovered || idleInhibitorWidget.activeFocus ? Theme.hoverBg : "transparent"
     
 
     Keys.onReturnPressed: idleInhibitorWidget.isCaffeineActive = !idleInhibitorWidget.isCaffeineActive
     Keys.onSpacePressed: idleInhibitorWidget.isCaffeineActive = !idleInhibitorWidget.isCaffeineActive
 
-    Behavior on color { ColorAnimation { duration: 150 } }
 
     property bool isCaffeineActive: false
 

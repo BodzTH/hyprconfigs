@@ -9,11 +9,11 @@ end
 
 # Directory Listing Aliases with Eza Fallback
 if type -q eza
-    alias ls="eza --icons"
-    alias l="eza -l --icons"
-    alias la="eza -a --icons"
-    alias lla="eza -la --icons"
-    alias lt="eza --tree --icons"
+    alias ls="eza --icons always"
+    alias l="eza -l --icons always"
+    alias la="eza -a --icons always"
+    alias lla="eza -la --icons always"
+    alias lt="eza --tree --icons always"
 else
     # Fallback to standard ls
     alias ls="ls --color=auto"

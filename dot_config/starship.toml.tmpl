@@ -1,7 +1,7 @@
 palette = "catppuccin_mocha"
 
 [character]
-success_symbol = "[[󰇥 ](sapphire)❯](mauve)"
+success_symbol = "[[󰇥 ](accent)❯](accent2)"
 error_symbol = "[[󰇥 ](red)❯](red)"
 vimcmd_symbol = "[󰇥 ❮](subtext1)"
 
@@ -197,3 +197,16 @@ surface0 = "#313244"
 base = "#1e1e2e"
 mantle = "#181825"
 crust = "#11111b"
+# Wallpaper accent (prompt icon) and its companion (❯), rewritten by
+# ~/.config/hypr/scripts/sync_border.py.
+accent = "#{{ template "accent" . }}"
+{{- /* accent2 is derived from the accent by sync_border.py (hue +60°) — keep
+       whatever it last wrote rather than recomputing it here. */}}
+{{- $accent2 := "a5a5a5" }}
+{{- $live := joinPath .chezmoi.homeDir ".config/starship.toml" }}
+{{- if stat $live }}
+{{-   with regexFind `(?m)^accent2[ \t]*=[ \t]*"#[0-9a-fA-F]{6}"` (include $live) }}
+{{-     $accent2 = regexFind "[0-9a-fA-F]{6}" (regexFind `"#[0-9a-fA-F]{6}"` .) }}
+{{-   end }}
+{{- end }}
+accent2 = "#{{ $accent2 }}"

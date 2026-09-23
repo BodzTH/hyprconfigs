@@ -15,8 +15,12 @@ local M = {}
 -- }
 
 M.base46 = {
-    theme = "onedark", -- Tell NvChad to use onedark as the template
+    -- Must match the key under changed_themes below, or the custom palette is ignored.
+    -- Note: the theme picker (<leader>ut) rewrites this line.
+    theme = "onedark",
     changed_themes = {
+        -- Wallpaper accent (lua/accent.lua), under `all` so it survives the theme picker.
+        all = { base_30 = { nord_blue = require("accent").get() } },
         onedark = {
             base_30 = {
                 white          = "#e5e5e5", -- Platinum White text
@@ -37,7 +41,7 @@ M.base46 = {
                 purple         = "#af87af",
                 cyan           = "#87afd7",
                 statusline_bg  = "#1c1c1c",
-                pmenu_bg       = "#1c1c1c",
+                pmenu_bg       = "#87afaf", -- selected dropdown row (text on it is `black`)
                 folder_bg      = "#87afaf",
             },
             base_16 = {

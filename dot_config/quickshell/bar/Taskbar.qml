@@ -3,7 +3,7 @@ import QtQuick.Controls
 import Quickshell
 import Quickshell.Widgets
 import Quickshell.Wayland
-import ".."
+import qs
 
 Row {
     id: taskbar
@@ -107,17 +107,14 @@ Row {
     Repeater {
         model: ToplevelManager.toplevels
 
-        delegate: Rectangle {
+        // BarItem: the bar's shared hover / focus / press look (accent tint).
+        delegate: BarItem {
             id: taskItem
             width: 28
-            height: 28
-            radius: 6
-            antialiasing: true
-            activeFocusOnTab: true
-            color: modelData.active ? Theme.activeGlow : ((hoverHandler.hovered || taskItem.activeFocus) ? Theme.hoverBg : "transparent")
-            
-
-            Behavior on color { ColorAnimation { duration: 150 } }
+            // Toplevel's property is `activated`. The old code read `active`,
+            // which doesn't exist, so the active-window glow and accent
+            // underline never showed.
+            selected: modelData.activated
 
             // Active window pill indicator
             Rectangle {
@@ -125,11 +122,11 @@ Row {
                 anchors.bottomMargin: 1
                 anchors.horizontalCenter: parent.horizontalCenter
                 height: 3
-                width: modelData.active ? 12 : ((hoverHandler.hovered || taskItem.activeFocus) ? 6 : 0)
+                width: modelData.activated ? 12 : ((hoverHandler.hovered || taskItem.activeFocus) ? 6 : 0)
                 radius: 1.5
                 antialiasing: true
-                color: modelData.active ? Theme.accent : Theme.subtext0
-                opacity: modelData.active || hoverHandler.hovered || taskItem.activeFocus ? 1.0 : 0.0
+                color: modelData.activated ? Theme.accent : Theme.subtext0
+                opacity: modelData.activated || hoverHandler.hovered || taskItem.activeFocus ? 1.0 : 0.0
 
                 Behavior on width { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
                 Behavior on opacity { NumberAnimation { duration: 150 } }

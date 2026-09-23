@@ -1,7 +1,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Services.SystemTray
-import ".."
+import qs
 
 Row {
     id: systemTrayWidget
@@ -13,19 +13,11 @@ Row {
     Repeater {
         model: SystemTray.items
 
-        Rectangle {
+        BarItem {   // shared hover / focus / press look
             id: trayItem
             required property var modelData
 
             width: 28
-            height: 28
-            radius: 4
-            antialiasing: true
-            
-            activeFocusOnTab: true
-            HoverHandler { id: trayHover }
-            color: trayHover.hovered || trayItem.activeFocus ? Theme.hoverBg : "transparent"
-            Behavior on color { ColorAnimation { duration: 150 } }
 
             Keys.onReturnPressed: modelData.activate()
             Keys.onSpacePressed: modelData.activate()

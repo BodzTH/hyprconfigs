@@ -5,7 +5,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Hyprland
-import ".."
+import qs
 
 // ClipboardPanel — replaces wofi clipboard
 // Triggered by: SUPER+V (global shortcut)
@@ -164,7 +164,13 @@ PanelWindow {
                         if (clipboardWindow.filteredItems.length > 0) {
                             var entry = clipboardWindow.filteredItems[itemList.currentIndex]
                             if (entry) {
-                                Quickshell.execDetached(["bash", "-c", "printf \"%s\\n\" \"$1\" | cliphist decode | wl-copy", "--", entry.rawLine]);
+                                Quickshell.execDetached([
+                                    // Own scope: wl-copy daemonizes to serve the selection, so a bare
+                                    // execDetached left it in quickshell.service and a quickshell restart
+                                    // silently dropped whatever you had just copied.
+                                    "systemd-run", "--user", "--scope", "--quiet", "--collect",
+                                    "--slice=app.slice", "--description=clipboard paste",
+                                    "bash", "-c", "printf \"%s\\n\" \"$1\" | cliphist decode | wl-copy", "--", entry.rawLine]);
                                 clipboardWindow.visible = false
                             }
                         }
@@ -198,7 +204,10 @@ PanelWindow {
                     implicitWidth: 4
                     radius: 2
                     antialiasing: true
-                    color: Theme.text
+                    // Wallpaper accent (set live by sync_border.py); brighter
+                    // while it is being dragged. Same as the app launcher.
+                    color: parent.pressed ? Qt.lighter(Theme.accent, 1.3) : Theme.accent
+                    Behavior on color { ColorAnimation { duration: 150 } }
                 }
                 background: Item {}
             }
@@ -246,7 +255,13 @@ PanelWindow {
 
                 TapHandler {
                     onTapped: {
-                        Quickshell.execDetached(["bash", "-c", "printf \"%s\\n\" \"$1\" | cliphist decode | wl-copy", "--", itemRow.modelData.rawLine]);
+                        Quickshell.execDetached([
+                            // Own scope: wl-copy daemonizes to serve the selection, so a bare
+                            // execDetached left it in quickshell.service and a quickshell restart
+                            // silently dropped whatever you had just copied.
+                            "systemd-run", "--user", "--scope", "--quiet", "--collect",
+                            "--slice=app.slice", "--description=clipboard paste",
+                            "bash", "-c", "printf \"%s\\n\" \"$1\" | cliphist decode | wl-copy", "--", itemRow.modelData.rawLine]);
                         clipboardWindow.visible = false
                     }
                 }
