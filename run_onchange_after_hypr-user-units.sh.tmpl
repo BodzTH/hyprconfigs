@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# Link and enable the Hyprland session's systemd user units whenever they or
+# their installer change, so a new unit takes effect on `chezmoi apply` with no
+# manual step. Idempotent: ~/.config/hypr/scripts/bootstrap.sh skips anything
+# already linked/enabled and anything whose package isn't installed yet (the
+# first apply on a new machine predates scripts/bootstrap.sh, which re-runs it).
+#
+# Re-run trigger — hashes of every unit and of the installer:
+{{- range (glob (joinPath .chezmoi.sourceDir "dot_config/hypr/systemd/*")) }}
+# {{ base . }} {{ include . | sha256sum }}
+{{- end }}
+# bootstrap.sh {{ include "dot_config/hypr/scripts/executable_bootstrap.sh" | sha256sum }}
+
+set -euo pipefail
+
+# No user manager (chroot, container, SSH without lingering): nothing to enable.
+if ! systemctl --user show-environment >/dev/null 2>&1; then
+    echo "chezmoi: no systemd user session; run ~/.config/hypr/scripts/bootstrap.sh after logging in" >&2
+    exit 0
+fi
+
+exec "$HOME/.config/hypr/scripts/bootstrap.sh"

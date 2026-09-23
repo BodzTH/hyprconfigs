@@ -39,7 +39,9 @@ into `modules/`, it belongs in the host profile instead.
 `hosts/hyprcachyos.lua` now. Only vendor-neutral Mesa driconf options stay in the
 module.
 
-Adding a machine = one new `hosts/<hostname>.lua` + run `scripts/bootstrap.sh`. No
+Adding a machine = one new `hosts/<hostname>.lua` + run `scripts/bootstrap.sh`
+(`chezmoi apply` also runs it whenever `systemd/` or the script changes, via
+`run_onchange_after_hypr-user-units.sh.tmpl` in the source root). No
 module edits. Keep it that way.
 
 ### GPU selection is resolved, not hardcoded
@@ -57,8 +59,8 @@ touch that resolver, re-test it with a bogus address.
 
 ## Daemons are systemd units, not `exec_cmd`
 
-`quickshell`, `awww-daemon` and both `cliphist` watchers are user units in
-`systemd/`, pulled in by `graphical-session.target`. They get `Restart=on-failure`
+`quickshell`, `awww-daemon`, both `cliphist` watchers and `openrgb-server` are
+user units in `systemd/`, pulled in by `graphical-session.target`. They get `Restart=on-failure`
 and their own cgroups.
 
 ### Something must start `graphical-session.target` — Hyprland 0.56.2 does not
@@ -105,7 +107,8 @@ after awww-daemon's socket is accepting connections. Do not add daemons to it.
 ### quickshell is the single point of failure
 
 It is simultaneously the bar, launcher, clipboard panel, power menu, screenshot
-panel, notification server and network widget. **Six keybinds** route to it through
+panel, notification server + history, volume OSD, window overview, keybind
+cheatsheet and network panel. **Eight keybinds** route to it through
 the `global_shortcuts` protocol (`quickshell:toggle-launcher` and friends in
 `modules/keybindings.lua`). Its QML lives in `~/.config/quickshell/` — a separate
 tree, outside this one. Renaming a shortcut here silently breaks it unless the QML
@@ -142,9 +145,72 @@ no replacement locker is accepted.
 ## Runtime border color
 
 `scripts/sync_border.py` extracts a color from the wallpaper and writes it into
-`hyprlock.conf`, `hyprtoolkit.conf`, the GTK 3/4 stylesheets, OpenRGB, and the live
-border via `hyprctl eval`. Group borders are deliberately not synced — group theming
-is archived (see below).
+`hyprlock.conf`, `hyprtoolkit.conf`, the GTK 3/4 stylesheets, Qt's Kvantum theme and qt6ct
+stylesheet, yazi's `theme.toml`
+(only lines tagged `# accent: fg|bg`), `starship.toml`'s palette `accent`/`accent2`, kitty's
+`cursor` (then `SIGUSR1` to every kitty to reload), OpenRGB, and the
+live border via `hyprctl eval`, and sets quickshell's accent live over IPC
+(`qs ipc call theme setAccent RRGGBB`). Neovim is not rewritten: its `chadrc.lua`
+reads the accent state file into base46's `nord_blue`, and `sync_border.py`
+calls `require'accent'.reload()` in each `$XDG_RUNTIME_DIR/nvim.*.0` socket to
+recompile base46's cache; a new nvim recompiles at startup if the cache is stale. Group borders are
+deliberately not synced — group theming is archived (see below).
+
+The colour is picked by a chroma²-weighted hue histogram, so a small vivid accent
+beats a large dull backdrop. The earlier count-weighted scorer turned muted
+bluish-grey backgrounds into a steel blue that appeared nowhere in the image.
+Rapid wallpaper changes are latest-wins: each run claims a token in
+`$XDG_RUNTIME_DIR/sync_border.token` before loading numpy/PIL, and the
+check-and-`apply()` is serialised on `sync_border.lock`, so an older run can
+neither skip ahead nor finish after a newer one. Stress-tested 2026-09-23:
+20/20 last-wins at click pace, 10/10 consistent across targets when launched
+simultaneously.
+
+**GTK and Qt follow the accent (2026-09-23).** Stock Graphite compiles one of nine
+preset accents into its CSS, so the `@define-color accent_color` in
+`~/.config/gtk-*/gtk.css` used to reach one dialog-border rule and nothing else.
+`scripts/build_gtk_theme.py` rebuilds `~/.themes/Graphite-Dark` (dark, `--tweaks
+black`, the installed variant) with the preset replaced by the literal
+`@accent_color`; sass colour builtins are wrapped so the accent's maths becomes
+GTK's runtime `alpha()`/`mix()`/`shade()`. Text on the accent is
+`@accent_fg_color`, which `sync_border.py` sets to `#111111` or `#ffffff` using
+Graphite's own brightness threshold (156). Verified: every accent-driven line of
+two stock builds with different blues is `@accent`-based here (GTK3 and GTK4), 0
+parse errors in `Gtk.CssProvider`. Qt uses Kvantum `GraphiteDark`: its SVG's grey
+accent (`#e0e0e0`, focused `#f2f2f2`, pressed `#cccccc`) became placeholders in
+`GraphiteDark.svg.in`, rendered on each change, plus the kvconfig highlight and
+on-accent text keys. Both apply to newly opened windows only. A grey wallpaper's
+Platinum accent reproduces the old monochrome look.
+
+**quickshell is not rewritten.** `Theme.qml` used to be patched in place and
+hot-reloaded, but a write landing while the previous reload was still running
+was missed — the bar kept the old colour in 5 of 10 rapid trials — and each
+change rebuilt the whole shell. Now `Theme.accent` is a plain property set over
+IPC (~20ms, no reload), and the colour is persisted to
+`~/.local/state/hypr/accent`, which `Theme.qml` reads once at start.
+
+### OpenRGB goes through one helper and a server
+
+Every LED write goes through `scripts/openrgb_color.sh` — `sync_border.py` and
+`pick_rgb.fish` both call it. It talks to `openrgb-server.service` with
+`--nodetect`: a standalone `openrgb` call redid full hardware detection (~3.9s)
+and two overlapping calls fought over the same devices, which is why colours
+used to need several tries. It picks Static per device where available and
+Direct otherwise (a blanket `-m static` errors on Direct-only devices). Calls
+are serialised with `flock` and latest-wins. The CLI sends at ~33ms, then idles
+~1s before exiting; the helper backgrounds it (with the lock fd closed) and holds
+the lock only 150ms, so back-to-back changes take ~0.22s each instead of ~1.1s.
+Verified on the hardware by reading controller colours back over the SDK:
+bursts of three changes always left the last colour, never an earlier one.
+
+The Skyloong keyboard is **not** OpenRGB's: it has its own vendor software.
+Both Skyloong detectors are off in `~/.config/OpenRGB/OpenRGB.json`
+(`Detectors` → `"Skyloong GK104 Pro": false`), so OpenRGB never opens it and
+only the motherboard and G305 get the accent. That file is OpenRGB's own,
+outside this tree — re-toggle it there (or in the GUI's Settings → Supported
+Devices) if it is ever reset.
+The server opens its port ~3s before detection finishes, so the helper waits
+out the first 6s of the server's life (login only).
 
 Two consequences. First, **those files are rewritten at runtime** — a border/accent
 color you read there is not necessarily what the repo intends. Second, a config
@@ -161,6 +227,17 @@ place**, each with a NOTE: `render.direct_scanout` (`modules/appearance.lua`),
 `misc.vrr = 3` stays on deliberately: mode 3 also covers fullscreen video, which mpv
 reports as content type `video`.
 
+The old quickshell shortcuts cheatsheet is archived in
+`~/.config/config_archive/quickshell/`; it was rebuilt the same day (see below).
+The old quickshell network panel, its bar widget, `NetworkService` and the
+separate speed widget are archived there too. The network panel was rebuilt
+the same day on NetworkManager alone: live state over D-Bus
+(`Quickshell.Networking`), `nmcli` only for one-shot actions (details, hidden
+networks, VPN, WireGuard import), and no outside tools — no nmtui, applet or
+editor. It opens from the bar item only (no keybind); `qs ipc call network
+toggle` opens it from a script. Its layer namespace `quickshell-network` is in
+`windowrules.lua`'s blur rule.
+
 Retired config goes to `~/.config/config_archive/` — outside this tree and outside
 chezmoi, and nothing loads it. Group (tabbed window) theming, its tab navigation and
 `sync_border.py`'s group accent were archived there on 2026-09-21 as
@@ -168,6 +245,29 @@ chezmoi, and nothing loads it. Group (tabbed window) theming, its tab navigation
 To restore, paste its pieces back into this tree as its header describes. Never
 `require()` it from there — that would put live config outside the tree, which is
 exactly what the one rule forbids.
+
+## Keybind descriptions feed the cheatsheet
+
+Every bind in `modules/keybindings.lua` goes through a local `bind()` helper and
+carries a description of the form **`Category: Action`** (Apps, Panels, Windows,
+Workspaces, Capture, Media, System). The quickshell cheatsheet (SUPER+H,
+`~/.config/quickshell/panels/Cheatsheet.qml`) reads them live from
+`hyprctl binds -j` and splits them into its left-rail category and the row
+title. A bind with no description, or an unknown category, lands under System
+with its raw key — so **give every new bind a description in that shape**.
+Binds whose descriptions differ only by a trailing direction word or number
+collapse into one row ("Focus window ←→↑↓", "Go to workspace 1–10").
+
+`bind()` also records each action in the global `cheatsheet.actions`, keyed by
+modmask + key, so the cheatsheet can run a bind:
+`hyprctl eval 'cheatsheet.run(64, "Q")'`. `hyprctl binds -j` alone can't — it
+shows Lua binds as dispatcher `__lua` with an opaque id. The global is on
+purpose (`hyprctl eval` only reaches globals) and is rebuilt on every reload.
+Quick check that nothing lost its description:
+
+```sh
+hyprctl binds -j | jq '[.[] | select(.description == "")] | length'   # want 0
+```
 
 ## Verifying a change
 
@@ -188,7 +288,7 @@ an env change requires a relogin.
 
 ## chezmoi
 
-`chezmoi managed` covers **34 files** under `.config/hypr` — every file in this
+`chezmoi managed` covers **32 files** under `.config/hypr` — every file in this
 tree except `hyprwiki/`, which is vendored upstream documentation and is
 deliberately left out rather than putting 120 upstream files in the dotfile repo.
 `systemd/`, `scripts/bootstrap.sh`, `hosts/laptop.lua`, `context.md` and this
@@ -216,10 +316,22 @@ chezmoi diff   ~/.config/hypr   # a/ = live, b/ = what apply would write
 chezmoi re-add ~/.config/hypr   # pull live changes INTO the source
 ```
 
-Run `re-add` after every editing session. `hyprlock.conf` and `hyprtoolkit.conf`
-will always show as changed if the wallpaper accent moved since the last re-add —
-`scripts/sync_border.py` rewrites them at runtime, so whatever accent is in the
-source is just whichever wallpaper was up when it was last captured.
+Run `re-add` after every editing session.
+
+### Accent files are templates — `re-add` skips them
+
+Every file `scripts/sync_border.py` rewrites is a chezmoi **template** that renders
+its accent from `~/.local/state/hypr/accent` (`.chezmoitemplates/accent` in the
+source): `hyprlock.conf`, `hyprtoolkit.conf`, GTK 3/4 CSS, kitty, starship, yazi's
+`theme.toml`. So a wallpaper change is not drift, `chezmoi apply --force` never
+reverts the colour, and the source no longer commits whichever accent happened to
+be up. `hyprlock.conf` also renders the chezmoi `displayName` (asked on
+`chezmoi init`) into the lock-screen greeting.
+
+The cost: `chezmoi re-add` silently skips templates. Edit these through the source —
+`chezmoi edit --apply ~/.config/hypr/hyprlock.conf` — or, after a live edit, fold
+it back with `chezmoi merge ~/.config/hypr/hyprlock.conf`. `chezmoi status` still
+flags a live edit to them, since it no longer hides behind accent noise.
 
 ## Conventions
 

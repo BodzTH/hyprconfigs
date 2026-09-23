@@ -38,7 +38,7 @@ hl.layer_rule({
 
 hl.layer_rule({
     name  = "blur-quickshell-panels",
-    match = { namespace = "^(quickshell-launcher|quickshell-clipboard|quickshell-screenshot|notification-osd|quickshell-wallpaper-selector)$" },
+    match = { namespace = "^(quickshell-launcher|quickshell-clipboard|quickshell-screenshot|notification-osd|quickshell-wallpaper-selector|quickshell-shortcuts|quickshell-notifications|quickshell-osd|quickshell-overview|quickshell-network)$" },
     blur  = true,
     blur_popups = true,
     ignore_alpha = 0.2,

@@ -1,0 +1,27 @@
+[Unit]
+Description=OpenRGB SDK server — keeps devices detected for scripts/openrgb_color.sh
+Documentation=https://openrgb.org
+PartOf=graphical-session.target
+After=graphical-session.target
+# Hosts without OpenRGB (the laptop) skip this cleanly instead of failing.
+ConditionPathExists=/usr/bin/openrgb
+
+# Why a server: every standalone `openrgb -m static -c ...` redid full hardware
+# detection (~3.9s measured 2026-09-23), and two wallpaper changes in a row ran
+# two detections at once against the same SMBus/HID devices, so colours were
+# dropped and had to be retried. With the server holding the devices, a client
+# call reaches the hardware in milliseconds (`openrgb --nodetect -l`: 26ms).
+#
+# This is a user unit on purpose, not the package's root openrgb.service: it
+# lives in this tree (the one rule), and the package's udev rules already give
+# the user device access.
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/openrgb --server --noautoconnect
+Restart=on-failure
+RestartSec=2
+Slice=background.slice
+
+[Install]
+WantedBy=graphical-session.target

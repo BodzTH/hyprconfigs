@@ -1,5 +1,8 @@
 # ~/.config/yazi/theme.toml
 # Custom color theme — HyprBlur (dark, desaturated palette)
+# Lines tagged `# accent: fg|bg` have that colour rewritten to the wallpaper
+# accent by ~/.config/hypr/scripts/sync_border.py. New yazi instances pick it up;
+# yazi has no live theme reload.
 # The built-in [icon] section is intentionally omitted; yazi loads its default
 # icon set automatically. Only explicit overrides belong here.
 
@@ -25,11 +28,11 @@ border_symbol = "│"
 border_style  = { fg = "#555555" }
 
 [tabs]
-active   = { fg = "#111111", bg = "#e5e5e5", bold = true }
+active   = { fg = "#111111", bg = "#{{ template "accent" . }}", bold = true }  # accent: bg
 inactive = { fg = "#888888", bg = "#1c1c1c" }
 
 [mode]
-normal_main = { fg = "#111111", bg = "#e5e5e5", bold = true }
+normal_main = { fg = "#111111", bg = "#{{ template "accent" . }}", bold = true }  # accent: bg
 normal_alt  = { fg = "#87afaf", bg = "#1c1c1c" }
 
 select_main = { fg = "#111111", bg = "#87af87", bold = true }
@@ -40,8 +43,8 @@ unset_alt   = { fg = "#d75f5f", bg = "#1c1c1c" }
 
 [indicator]
 parent  = { fg = "#111111", bg = "#888888" }
-current = { fg = "#111111", bg = "#e5e5e5" }
-preview = { fg = "#111111", bg = "#e5e5e5" }
+current = { fg = "#111111", bg = "#{{ template "accent" . }}" }  # accent: bg
+preview = { fg = "#111111", bg = "#{{ template "accent" . }}" }  # accent: bg
 
 [status]
 sep_left  = { open = "", close = "" }
@@ -58,7 +61,7 @@ perm_exec  = { fg = "#87af87" }
 perm_sep   = { fg = "#555555" }
 
 [input]
-border   = { fg = "#e5e5e5" }
+border   = { fg = "#{{ template "accent" . }}" }  # accent: fg
 title    = {}
 value    = {}
 selected = { reversed = true }
@@ -69,8 +72,8 @@ active   = { fg = "#af87af" }
 inactive = {}
 
 [confirm]
-border  = { fg = "#e5e5e5" }
-title   = { fg = "#e5e5e5" }
+border  = { fg = "#{{ template "accent" . }}" }  # accent: fg
+title   = { fg = "#{{ template "accent" . }}" }  # accent: fg
 body    = {}
 list    = {}
 btn_yes = { reversed = true }
@@ -132,7 +135,7 @@ rules = [
 ]
 
 [spot]
-border   = { fg = "#e5e5e5" }
-title    = { fg = "#e5e5e5" }
+border   = { fg = "#{{ template "accent" . }}" }  # accent: fg
+title    = { fg = "#{{ template "accent" . }}" }  # accent: fg
 tbl_cell = { fg = "#e5e5e5", reversed = true }
 tbl_col  = { bold = true }

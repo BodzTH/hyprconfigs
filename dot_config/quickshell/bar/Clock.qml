@@ -1,8 +1,8 @@
 import QtQuick
 import Quickshell
-import ".."
+import qs
 
-Rectangle {
+BarItem {
     id: clockWidget
 
     required property var parentWindow
@@ -12,25 +12,21 @@ Rectangle {
         precision: SystemClock.Seconds
     }
 
-    height: Theme.barHeight
     width: timeText.implicitWidth + 20
-    radius: Theme.widgetRadius
-    antialiasing: true
-    activeFocusOnTab: true
-    color: clockHover.hovered || clockWidget.activeFocus ? Theme.hoverBg : "transparent"
     
 
     Keys.onReturnPressed: root.toggleCalendar()
     Keys.onSpacePressed: root.toggleCalendar()
 
-    Behavior on color { ColorAnimation { duration: 150 } }
 
     Text {
         id: timeText
         anchors.centerIn: parent
         text: Qt.formatDateTime(clock.date, "ddd h:mm:ss AP")
-        color: Theme.accent
-        
+        // Text, not accent: the accent follows the wallpaper now (sync_border.py)
+        // and a mid-tone blue clock on a dark bar reads worse than platinum did.
+        color: Theme.text
+
         font.family: Theme.fontMain
         font.pixelSize: Theme.fontSize
         font.weight: Font.Bold
@@ -43,6 +39,12 @@ Rectangle {
     }
 
     TapHandler {
+        acceptedButtons: Qt.LeftButton
         onTapped: root.toggleCalendar()
+    }
+    // Right click: notification history (the bar bell does the same)
+    TapHandler {
+        acceptedButtons: Qt.RightButton
+        onTapped: root.toggleNotifications()
     }
 }

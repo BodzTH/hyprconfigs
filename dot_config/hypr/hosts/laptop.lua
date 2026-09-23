@@ -32,6 +32,9 @@ return {
         -- __GLX_VENDOR_LIBRARY_NAME = "nvidia",     -- NVIDIA
         -- NVD_BACKEND = "direct",                   -- NVIDIA
     },
+    -- Top-level `input` keys that differ on this machine, e.g.
+    --   input = { kb_layout = "us,de", kb_variant = ",nodeadkeys" },
+    input   = {},
     apps    = {},
     devices = {},
 }

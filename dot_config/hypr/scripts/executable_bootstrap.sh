@@ -47,6 +47,7 @@ UNITS=(
     awww-daemon.service       # wallpaper daemon
     cliphist-text.service     # clipboard history — text
     cliphist-image.service    # clipboard history — images
+    openrgb-server.service    # OpenRGB SDK server (skips itself where openrgb is absent)
     hypridle.service          # idle management (package-provided)
     hyprpolkitagent.service   # polkit agent (package-provided)
     gcr-ssh-agent.socket      # ssh agent; SSH_AUTH_SOCK set in modules/environment.lua

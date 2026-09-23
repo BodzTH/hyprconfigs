@@ -1,6 +1,29 @@
-{{- $gpu := output "sh" "-c" "v=$(cat /sys/class/drm/card[0-9]/device/vendor 2>/dev/null); case \"$v\" in *0x10de*) printf nvidia;; *0x8086*) printf intel;; *) printf amd;; esac" | trim -}}
-{{- $hostname := .chezmoi.hostname -}}
+{{- /*
+  Per-machine data, generated on `chezmoi init` and cached in
+  ~/.config/chezmoi/chezmoi.toml. Re-run `chezmoi init` after swapping GPUs.
+  Non-interactive setup: `chezmoi init --promptDefaults` takes every default.
+*/ -}}
+
+{{- /* GPU vendor, picks packages/80-gpu-<vendor>.txt in scripts/bootstrap.sh.
+       Discrete beats integrated: NVIDIA, then AMD, then Intel, so an AMD or
+       NVIDIA card next to an Intel/AMD iGPU wins. Anything else (a VM, no DRM
+       device yet) is "none" and bootstrap installs no driver stack. */ -}}
+{{- $vendors := output "sh" "-c" "cat /sys/class/drm/card*/device/vendor 2>/dev/null || true" -}}
+{{- $gpu := "none" -}}
+{{- if contains "0x10de" $vendors -}}
+{{-   $gpu = "nvidia" -}}
+{{- else if contains "0x1002" $vendors -}}
+{{-   $gpu = "amd" -}}
+{{- else if contains "0x8086" $vendors -}}
+{{-   $gpu = "intel" -}}
+{{- end -}}
+
+{{- /* Shown on the hyprlock screen and the SDDM greeter header. Defaults to
+       the account's full name (GECOS), else the login name. */ -}}
+{{- $gecos := output "sh" "-c" "getent passwd \"$(id -un)\" 2>/dev/null | cut -d: -f5 | cut -d, -f1" | trim -}}
+{{- $displayName := promptStringOnce . "displayName" "Name shown on the lock screen and login greeter" ($gecos | default .chezmoi.username) -}}
 
 [data]
-    hostname = {{ $hostname | quote }}
+    hostname = {{ .chezmoi.hostname | quote }}
     gpu = {{ $gpu | quote }}
+    displayName = {{ $displayName | quote }}

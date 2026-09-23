@@ -13,6 +13,16 @@ system/**
 # App-managed state (fish rewrites this constantly; never track it)
 .config/fish/fish_variables
 
+# Generated / machine-local files that live inside tracked config dirs
+.config/quickshell/.qmlls.ini
+.config/quickshell/quickshell-documentation/**
+.config/yazi/yazi-documentation/**
+.config/hypr/hyprwiki/**
+
+# AI-agent workspaces inside tracked config dirs
+**/.claude/**
+**/.agents/**
+
 # Python cache
 **/__pycache__/**
 **/*.pyc

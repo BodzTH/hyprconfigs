@@ -11,27 +11,35 @@
 
 local host = require("hosts")
 
-hl.config({
-    input = {
-        kb_layout    = "us,ara",   -- Arabic + US layout; SUPER+K switches between them
-        follow_mouse = 1,
-        sensitivity  = 0,          -- -1.0 to 1.0, 0 = no modification
+local input = {
+    kb_layout    = "us,ara",   -- Arabic + US layout; SUPER+K switches between them
+                               -- (a host sets its own via `input = { kb_layout = "..." }`)
+    follow_mouse = 1,
+    sensitivity  = 0,          -- -1.0 to 1.0, 0 = no modification
 
-        repeat_rate            = 40,   -- default 25 — noticeably sluggish key-repeat in nvim/yazi
-        repeat_delay           = 300,  -- default 600
-        follow_mouse_threshold = 3,    -- avoids focus jitter when the cursor crosses the 20px gaps
+    repeat_rate            = 40,   -- default 25 — noticeably sluggish key-repeat in nvim/yazi
+    repeat_delay           = 300,  -- default 600
+    follow_mouse_threshold = 3,    -- avoids focus jitter when the cursor crosses the 20px gaps
 
-        -- Ignored entirely on machines with no touchpad (e.g. the desktop) —
-        -- safe to keep here so the same config covers a laptop too.
-        touchpad = {
-            natural_scroll       = true,
-            tap_to_click         = true,
-            disable_while_typing = true,
-            clickfinger_behavior = true,  -- 1/2/3 fingers = LMB/RMB/MMB, ignores click location
-            drag_lock            = 1,
-            scroll_factor        = 0.8,
-        },
+    -- Ignored entirely on machines with no touchpad (e.g. the desktop) —
+    -- safe to keep here so the same config covers a laptop too.
+    touchpad = {
+        natural_scroll       = true,
+        tap_to_click         = true,
+        disable_while_typing = true,
+        clickfinger_behavior = true,  -- 1/2/3 fingers = LMB/RMB/MMB, ignores click location
+        drag_lock            = 1,
+        scroll_factor        = 0.8,
     },
+}
+
+-- ▓▒░ PER-HOST INPUT OVERRIDES (hosts/<hostname>.lua `input`, top-level keys)
+for key, val in pairs(host.input or {}) do
+    input[key] = val
+end
+
+hl.config({
+    input  = input,
     cursor = {
         warp_on_change_workspace = 0,     -- Don't teleport cursor on workspace switch
         -- no_break_fs_vrr          = 2,     -- Auto-prevent cursor movement from breaking VRR

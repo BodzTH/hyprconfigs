@@ -1,1226 +1,1038 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
-import QtQuick.Layouts
 import QtQuick.Controls
+import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
-import Quickshell.Hyprland
 import Quickshell.Networking
-import ".."
-import "../services"
+import qs
+import qs.services
 
+// NetworkPanel — drop-down from the bar's network item.
+//
+// Rebuilt 2026-09-23; the old panel is in ~/.config/config_archive/quickshell/.
+// Everything goes through services/NetworkService.qml — NetworkManager over
+// D-Bus for live state, nmcli only for one-shot actions — and nothing here
+// opens an outside tool (no nmtui, editor, applet or terminal).
+//
+// Sections: status header (online pill) · Ethernet · Wi-Fi (+ networks, join
+// hidden) · VPN (+ WireGuard import). Accent marks what is on/connected and
+// the focused row; everything else stays glass, like the launcher.
+//
+// Keyboard: Tab / ↑↓ move between rows, Enter / Space activate, Esc closes.
 PanelWindow {
-    id: networkPanel
+    id: panel
     visible: false
 
     WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.namespace: "quickshell-screenshot"
+    WlrLayershell.namespace: "quickshell-network"
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
 
+    // Full screen so a click outside closes it
     anchors { top: true; bottom: true; left: true; right: true }
-    color: "transparent"
     exclusiveZone: -1
+    color: "transparent"
 
-    // Background click-to-close
-    MouseArea {
-        anchors.fill: parent
-        onClicked: networkPanel.visible = false
+    // Screen x the drop-down centres under (the bar item's centre)
+    property real anchorX: width - 200
+
+    // Which rows are expanded
+    property var expandedNetwork: null      // WifiNetwork showing its password field
+    property string detailsFor: ""          // "ethernet" | "wifi" | ""
+    property bool hiddenOpen: false
+    property bool importOpen: false
+    property bool dnsOpen: false
+    // DNS-over-TLS choice for the next apply. Starts as whatever the
+    // connection has; Hello defaults new picks to encrypted.
+    property bool dnsUseDot: true
+
+    // Per-network error text after a failed connect, keyed by name
+    property var wifiErrors: ({})
+    property string hiddenMessage: ""
+    property bool hiddenBusy: false
+    property string importMessage: ""
+    property string vpnBusy: ""             // name of the VPN being switched
+
+    readonly property color warning: "#dfaf87"   // same amber as nvim/yazi's palette
+
+    function toggle(scr, x) {
+        if (visible) { visible = false; return; }
+        if (scr) screen = scr;
+        if (x !== undefined) anchorX = x;
+        expandedNetwork = null;
+        detailsFor = "";
+        hiddenOpen = false;
+        importOpen = false;
+        dnsOpen = false;
+        hiddenMessage = "";
+        importMessage = "";
+        visible = true;
+        NetworkService.refreshVpns();
+        NetworkService.findWireguardFiles();
+        NetworkService.refreshDns();
+        firstFocus.forceActiveFocus();
     }
 
-    // ── Tab state ────────────────────────────────────────────────────────────
-    property int currentTab: 0  // 0=Status, 1=WiFi, 2=Saved
-
-    // ── WiFi list — bound live to the native device, sorted by signal ────────
-    readonly property var wifiNetworks: {
-        var dev = NetworkService.wifiDevice;
-        if (!dev) return [];
-        return dev.networks.values.slice().sort((a, b) => b.signalStrength - a.signalStrength);
-    }
-    property bool scanPulse: false // brief cosmetic spin when refresh is tapped
-
-    // ── Password / hidden network overlay ────────────────────────────────────
-    property bool showPasswordPrompt: false
-    property bool showHiddenPrompt: false
-    property var pendingNetwork: null   // WifiNetwork awaiting password confirm
-    property string pendingSsid: ""     // display name for the overlay header
-    property string pendingPassword: ""
-    property string hiddenSsid: ""
-    property string hiddenPassword: ""
-    property bool showPassword: false
-
-    // ── Saved connections ────────────────────────────────────────────────────
-    property var savedConnections: []
-    property string confirmDeleteName: ""
-    property string confirmDeleteUuid: ""
-
-    // ── Overlay active? ──────────────────────────────────────────────────────
-    readonly property bool overlayActive: showPasswordPrompt || showHiddenPrompt
-
-    // ── Processes ────────────────────────────────────────────────────────────
-    // WiFi connect/disconnect/forget now go straight through the native
-    // WifiNetwork objects (see tryConnect/forgetWifi below). Only the Saved
-    // tab (needs connection UUIDs, which the native module doesn't expose)
-    // and hidden-network connect (needs NMSettings, not QML-creatable) still
-    // shell out to nmcli, and only on demand.
-
-    property Process hiddenConnectProc: Process {
-        running: false
-    }
-
-    property Process conUpProc: Process {
-        running: false
-        onRunningChanged: { if (!running) networkPanel.loadSaved() }
-    }
-
-    property Process conDownProc: Process {
-        running: false
-        onRunningChanged: { if (!running) networkPanel.loadSaved() }
-    }
-
-    property Process deleteProc: Process {
-        running: false
-        onRunningChanged: { if (!running) networkPanel.loadSaved() }
-    }
-
-    Connections {
-        target: NetworkService
-        function onSavedConnectionsReady(raw) {
-            var result = [];
-            var lines = raw.split("\n");
-            for (var i = 0; i < lines.length; i++) {
-                var line = lines[i].trim();
-                if (!line) continue;
-                // format: name:type:active:uuid  (name may contain colons)
-                // uuid is always last 36 chars with known format
-                var uuidMatch = line.match(/:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/);
-                if (!uuidMatch) continue;
-                var uuid = uuidMatch[1];
-                var rest = line.slice(0, line.length - uuid.length - 1); // strip :uuid
-                var lastColon = rest.lastIndexOf(":");
-                var active = rest.slice(lastColon + 1) === "yes";
-                rest = rest.slice(0, lastColon);
-                var secondLastColon = rest.lastIndexOf(":");
-                var type = rest.slice(secondLastColon + 1);
-                var name = rest.slice(0, secondLastColon);
-                if (type === "loopback") continue;
-                var label = type;
-                if (type === "802-3-ethernet") label = "ethernet";
-                else if (type === "802-11-wireless") label = "wifi";
-                result.push({ name: name, type: label, active: active, uuid: uuid });
-            }
-            networkPanel.savedConnections = result;
+    // `qs ipc call network toggle` — opens on the focused screen under where
+    // the bar item sits. No keybind by design (bar only); this is for testing
+    // and scripts.
+    IpcHandler {
+        target: "network"
+        function toggle(): void {
+            // Screen width, not panel.width: the window isn't mapped yet, so
+            // its own width is still 0 here.
+            var scr = root.getFocusedScreen();
+            root.toggleNetwork(scr, (scr ? scr.width : 1920) - 200);
         }
     }
 
-    // ── Actions ───────────────────────────────────────────────────────────────
-
-    // Scanning runs continuously in the background (see onVisibleChanged)
-    // once the panel is open; refresh just gives the button a cosmetic pulse.
-    function rescan() {
-        scanPulse = true;
-        scanPulseTimer.restart();
-    }
-
-    Timer {
-        id: scanPulseTimer
-        interval: 700
-        onTriggered: networkPanel.scanPulse = false
-    }
-
-    function loadSaved() {
-        confirmDeleteName = "";
-        confirmDeleteUuid = "";
-        NetworkService.fetchSavedConnections();
-    }
-
-    function connectToNetwork(network, password) {
-        if (!network) return;
-        if (password) network.connectWithPsk(password);
-        else network.connect();
-    }
-
-    function connectToHidden(ssid, password) {
-        if (password)
-            hiddenConnectProc.command = ["nmcli", "dev", "wifi", "connect", ssid, "password", password, "hidden", "yes"];
-        else
-            hiddenConnectProc.command = ["nmcli", "dev", "wifi", "connect", ssid, "hidden", "yes"];
-        hiddenConnectProc.running = true;
-    }
-
-    function tryConnect(network) {
-        if (network.connected) { network.disconnect(); return; }
-        if (network.security !== WifiSecurityType.Open && network.security !== WifiSecurityType.Owe) {
-            pendingNetwork = network;
-            pendingSsid = network.name;
-            pendingPassword = "";
-            showPassword = false;
-            showPasswordPrompt = true;
-        } else {
-            connectToNetwork(network, "");
-        }
-    }
-
-    function forgetWifi(network) {
-        if (network) network.forget();
-    }
-
-    function activateConnection(name) {
-        conUpProc.command = ["nmcli", "con", "up", name];
-        conUpProc.running = true;
-    }
-
-    function deactivateConnection(name) {
-        conDownProc.command = ["nmcli", "con", "down", name];
-        conDownProc.running = true;
-    }
-
-    function deleteConnection(uuid) {
-        deleteProc.command = ["nmcli", "con", "delete", uuid];
-        deleteProc.running = true;
-    }
-
-    // Called from overlay buttons — defined at popup root level so all children can reach it
-    function confirmConnect() {
-        if (showHiddenPrompt) {
-            showHiddenPrompt = false;
-            connectToHidden(hiddenSsid, hiddenPassword);
-        } else {
-            showPasswordPrompt = false;
-            connectToNetwork(pendingNetwork, pendingPassword);
-            pendingNetwork = null;
-        }
-    }
-
-    function cancelOverlay() {
-        showPasswordPrompt = false;
-        showHiddenPrompt = false;
-        pendingNetwork = null;
-        pendingPassword = "";
-        hiddenSsid = "";
-        hiddenPassword = "";
-    }
-
-    function signalIcon(sig) {
-        if (sig >= 75) return "󰤨";
-        if (sig >= 50) return "󰤥";
-        if (sig >= 25) return "󰤢";
-        return "󰤟";
-    }
-
-    function typeIcon(type) {
-        if (type === "ethernet") return "󰈀";
-        if (type === "wifi") return "󰖩";
-        if (type === "vpn" || type === "wireguard") return "󰌾";
-        return "󰛳";
-    }
-
-    // ── Lifecycle ─────────────────────────────────────────────────────────────
-
+    // Scan only while someone is looking at the list.
     onVisibleChanged: {
-        if (visible) {
-            currentTab = 0;
-            cancelOverlay();
-            confirmDeleteName = "";
-            confirmDeleteUuid = "";
-            NetworkService.updateAll();
-            if (NetworkService.activeConnectionName)
-                NetworkService.fetchConnectionDetails(NetworkService.activeConnectionName);
-            if (NetworkService.wifiDevice) NetworkService.wifiDevice.scannerEnabled = true;
-            loadSaved();
-            rootRect.forceActiveFocus();
+        if (NetworkService.wifiDevice) NetworkService.wifiDevice.scannerEnabled = visible;
+    }
+
+    function openDetails(which, ifname) {
+        if (detailsFor === which) { detailsFor = ""; return; }
+        detailsFor = which;
+        NetworkService.fetchDetails(ifname);
+    }
+
+    function activateNetwork(net) {
+        if (net.connected) {
+            openDetails("wifi", NetworkService.wifiDevice.name);
+        } else if (NetworkService.needsPassword(net)) {
+            expandedNetwork = expandedNetwork === net ? null : net;
         } else {
-            if (NetworkService.wifiDevice) NetworkService.wifiDevice.scannerEnabled = false;
+            clearError(net);
+            NetworkService.connectWifi(net);
         }
     }
 
-    // Fetch connection details once activeConnectionName is known
+    function clearError(net) {
+        var e = Object.assign({}, wifiErrors);
+        delete e[net.name];
+        wifiErrors = e;
+    }
+
     Connections {
         target: NetworkService
-        function onActiveConnectionNameChanged() {
-            if (networkPanel.visible && NetworkService.activeConnectionName)
-                NetworkService.fetchConnectionDetails(NetworkService.activeConnectionName);
+        function onWifiFailed(network, reason, wantsPassword) {
+            var e = Object.assign({}, panel.wifiErrors);
+            e[network.name] = wantsPassword ? "Wrong or missing password" : reason;
+            panel.wifiErrors = e;
+            // What nm-applet's password dialog used to do: ask again, inline.
+            if (wantsPassword) panel.expandedNetwork = network;
+        }
+        function onHiddenResult(ok, message) {
+            panel.hiddenBusy = false;
+            panel.hiddenMessage = ok ? "" : message;
+            if (ok) panel.hiddenOpen = false;
+        }
+        function onVpnResult(name, ok, message) { panel.vpnBusy = ""; }
+        function onImportResult(ok, message) {
+            panel.importMessage = ok ? "Imported" : message;
+            if (ok) panel.importOpen = false;
         }
     }
 
-    // ── Root container ────────────────────────────────────────────────────────
+    function signalGlyph(s) {
+        return s > 0.75 ? "󰤨" : s > 0.5 ? "󰤥" : s > 0.25 ? "󰤢" : "󰤟";
+    }
 
-    Rectangle {
-        id: rootRect
-        anchors { top: parent.top; right: parent.right }
-        anchors.topMargin: 52
-        anchors.rightMargin: 16
-        width: 320
-        height: Math.min(520, mainColumn.implicitHeight + 32)
-        color: Theme.glassBg
+    function securityText(net) {
+        var t = WifiSecurityType.toString(net.security);
+        if (net.security === WifiSecurityType.Open) return "Open";
+        if (net.security === WifiSecurityType.Sae) return "WPA3";
+        if (net.security === WifiSecurityType.Wpa2Psk) return "WPA2";
+        if (net.security === WifiSecurityType.WpaPsk) return "WPA";
+        if (net.security === WifiSecurityType.Owe) return "Enhanced open";
+        return t;
+    }
+
+    // ▓▒░ SMALL REUSABLE PIECES
+
+    // On/off switch: accent when on, glass when off.
+    component Toggle: Rectangle {
+        id: toggle
+        property bool checked: false
+        property bool busy: false
+        signal toggled()
+
+        implicitWidth: 38
+        implicitHeight: 22
+        radius: height / 2
+        antialiasing: true
+        color: checked ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.85) : Qt.rgba(1, 1, 1, 0.08)
+        border.color: checked ? Theme.accent : Theme.borderMuted
+        border.width: 1
+        opacity: busy ? 0.55 : 1
+        Behavior on color { ColorAnimation { duration: 160 } }
+
+        Rectangle {
+            width: parent.height - 6
+            height: width
+            radius: width / 2
+            anchors.verticalCenter: parent.verticalCenter
+            x: toggle.checked ? parent.width - width - 3 : 3
+            color: toggle.checked ? Theme.base : Theme.subtext0
+            Behavior on x { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
+        }
+
+        HoverHandler { cursorShape: Qt.PointingHandCursor }
+        TapHandler { onTapped: if (!toggle.busy) toggle.toggled() }
+    }
+
+    // Small round icon button (details / disconnect / forget).
+    component IconButton: Rectangle {
+        id: iconBtn
+        property string glyph: ""
+        property string tip: ""
+        property color tint: Theme.text
+        signal clicked()
+
+        implicitWidth: 26
+        implicitHeight: 26
+        radius: 13
+        color: btnHover.hovered ? Theme.bgSelection : Qt.rgba(1, 1, 1, 0.05)
         border.color: Theme.glassBorder
         border.width: 1
-        radius: 19
-        antialiasing: true
-        clip: true
-        focus: true
+        Behavior on color { ColorAnimation { duration: 100 } }
 
-        // Escape dismisses the innermost open state first: the password/hidden
-        // overlay, then an inline delete confirmation, then the panel itself.
-        Keys.onEscapePressed: {
-            if (networkPanel.overlayActive) {
-                networkPanel.cancelOverlay();
-            } else if (networkPanel.confirmDeleteUuid) {
-                networkPanel.confirmDeleteName = "";
-                networkPanel.confirmDeleteUuid = "";
-            } else {
-                networkPanel.visible = false;
+        Text {
+            anchors.centerIn: parent
+            text: iconBtn.glyph
+            color: iconBtn.tint
+            font.family: Theme.fontMain
+            font.pixelSize: 13
+        }
+        HoverHandler { id: btnHover; cursorShape: Qt.PointingHandCursor }
+        TapHandler { onTapped: iconBtn.clicked() }
+    }
+
+    // Glass text field used for passwords, SSIDs and paths.
+    component Field: Rectangle {
+        id: field
+        property alias text: input.text
+        property string placeholder: ""
+        property bool secret: false
+        property bool revealed: false
+        property alias input: input
+        signal accepted()
+
+        implicitHeight: 34
+        radius: 8
+        color: Theme.glassBg
+        border.color: input.activeFocus ? Theme.accent : Theme.borderMuted
+        border.width: 1
+        Behavior on border.color { ColorAnimation { duration: 120 } }
+
+        RowLayout {
+            anchors { fill: parent; leftMargin: 10; rightMargin: 8 }
+            spacing: 6
+
+            TextInput {
+                id: input
+                Layout.fillWidth: true
+                color: Theme.text
+                font.family: Theme.fontMain
+                font.pixelSize: 12
+                echoMode: field.secret && !field.revealed ? TextInput.Password : TextInput.Normal
+                clip: true
+                selectByMouse: true
+                Keys.onReturnPressed: field.accepted()
+                Keys.onEnterPressed: field.accepted()
+
+                Text {
+                    anchors.fill: parent
+                    verticalAlignment: Text.AlignVCenter
+                    text: field.placeholder
+                    color: Theme.subtext0
+                    font: input.font
+                    visible: input.text.length === 0
+                }
+            }
+
+            // Show / hide password
+            Text {
+                visible: field.secret
+                text: field.revealed ? "󰈉" : "󰈈"
+                color: Theme.subtext0
+                font.family: Theme.fontMain
+                font.pixelSize: 14
+                HoverHandler { cursorShape: Qt.PointingHandCursor }
+                TapHandler { onTapped: field.revealed = !field.revealed }
+            }
+        }
+    }
+
+    // Accent pill button (Connect / Join / Import).
+    component PillButton: Rectangle {
+        id: pill
+        property string label: ""
+        property bool enabled_: true
+        signal clicked()
+
+        implicitWidth: pillText.implicitWidth + 24
+        implicitHeight: 34
+        radius: 8
+        opacity: enabled_ ? 1 : 0.45
+        color: pillHover.hovered && enabled_ ? Qt.lighter(Theme.accent, 1.15) : Theme.accent
+        Behavior on color { ColorAnimation { duration: 100 } }
+
+        Text {
+            id: pillText
+            anchors.centerIn: parent
+            text: pill.label
+            color: Theme.base
+            font.family: Theme.fontMain
+            font.pixelSize: 12
+            font.weight: Font.Bold
+        }
+        HoverHandler { id: pillHover; cursorShape: Qt.PointingHandCursor }
+        TapHandler { onTapped: if (pill.enabled_) pill.clicked() }
+    }
+
+    // A clickable row: icon badge, title/subtitle, and a right-hand slot.
+    // Focus (keyboard) and hover share the launcher's row look; `active`
+    // tints the icon with the accent (connected / on).
+    component Row_: Rectangle {
+        id: row
+        property string glyph: ""
+        property string title: ""
+        property string subtitle: ""
+        property color subtitleColor: Theme.subtext0
+        property bool active: false
+        default property alias trailing: trailingSlot.data
+        signal activated()
+
+        Layout.fillWidth: true
+        implicitHeight: 48
+        radius: 10
+        antialiasing: true
+        activeFocusOnTab: true
+        color: activeFocus ? Theme.bgSelection : rowHover.hovered ? Theme.hoverBg : "transparent"
+        border.color: activeFocus ? Theme.glassBorder : "transparent"
+        border.width: 1
+        Behavior on color { ColorAnimation { duration: 80 } }
+
+        readonly property bool hovered: rowHover.hovered
+
+        Keys.onReturnPressed: activated()
+        Keys.onSpacePressed: activated()
+
+        // Accent stripe on the keyboard-focused row
+        Rectangle {
+            width: 3
+            height: parent.height - 18
+            radius: 1.5
+            anchors.left: parent.left
+            anchors.leftMargin: 4
+            anchors.verticalCenter: parent.verticalCenter
+            color: Theme.accent
+            visible: row.activeFocus
+        }
+
+        RowLayout {
+            anchors { fill: parent; leftMargin: 12; rightMargin: 10 }
+            spacing: 12
+
+            Rectangle {
+                Layout.preferredWidth: 30
+                Layout.preferredHeight: 30
+                radius: 8
+                color: row.active ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.16) : Qt.rgba(1, 1, 1, 0.06)
+                border.color: row.active ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.5) : Theme.glassBorder
+                border.width: 1
+                Behavior on color { ColorAnimation { duration: 160 } }
+
+                Text {
+                    anchors.centerIn: parent
+                    text: row.glyph
+                    color: row.active ? Theme.accent : Theme.subtext0
+                    font.family: Theme.fontMain
+                    font.pixelSize: 15
+                }
+            }
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 1
+                Text {
+                    text: row.title
+                    color: Theme.text
+                    font.family: Theme.fontMain
+                    font.pixelSize: 13
+                    font.weight: Font.Medium
+                    Layout.fillWidth: true
+                    elide: Text.ElideRight
+                    renderType: Text.NativeRendering
+                }
+                Text {
+                    text: row.subtitle
+                    visible: text.length > 0
+                    color: row.subtitleColor
+                    font.family: Theme.fontMain
+                    font.pixelSize: 11
+                    Layout.fillWidth: true
+                    elide: Text.ElideRight
+                    renderType: Text.NativeRendering
+                }
+            }
+
+            RowLayout {
+                id: trailingSlot
+                spacing: 6
             }
         }
 
-        // Block background click propagation
-        MouseArea { anchors.fill: parent; onClicked: {} }
+        HoverHandler { id: rowHover }
+        TapHandler {
+            // A tap on a switch or button in the trailing slot belongs to that
+            // control only. Both handlers used to fire: the Wi-Fi switch
+            // flipped Wi-Fi off, then the row flipped it straight back on
+            // (switching off updates instantly, so the second flip saw "off").
+            // Switching on applies a moment later, so both flips said "on" —
+            // which is why only turning Wi-Fi off seemed broken.
+            onTapped: (eventPoint) => {
+                var p = trailingSlot.mapFromItem(row, eventPoint.position.x, eventPoint.position.y);
+                if (trailingSlot.visible && p.x >= 0 && p.y >= 0
+                        && p.x <= trailingSlot.width && p.y <= trailingSlot.height)
+                    return;
+                row.forceActiveFocus();
+                row.activated();
+            }
+        }
+    }
 
-        // ── Main content (always present, behind overlay) ─────────────────────
-        ColumnLayout {
-            id: mainColumn
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.top: parent.top
-            anchors.margins: 16
-            spacing: 12
+    // IP details for the active connection on one interface.
+    component DetailsBlock: ColumnLayout {
+        Layout.fillWidth: true
+        Layout.leftMargin: 54
+        Layout.rightMargin: 12
+        Layout.bottomMargin: 6
+        spacing: 3
 
-            // ── Header ───────────────────────────────────────────────────────
-            RowLayout {
-                Layout.fillWidth: true
-
+        Repeater {
+            model: {
+                var d = NetworkService.details;
+                if (NetworkService.detailsLoading || !d.ip) return [["", "Loading…"]];
+                var rows = [["IP", d.ip.join(", ") || "—"], ["Gateway", d.gateway || "—"], ["DNS", d.dns.join(", ") || "—"]];
+                if (d.ip6.length) rows.push(["IPv6", d.ip6.join(", ")]);
+                return rows;
+            }
+            delegate: RowLayout {
+                id: detailRow
+                required property var modelData
+                spacing: 10
                 Text {
-                    text: NetworkService.vpnActive ? "󰌾"
-                        : NetworkService.type === "ethernet" ? "󰈀"
-                        : NetworkService.wifiEnabled ? "󰖩" : "󰖪"
-                    color: NetworkService.vpnActive ? Theme.success
-                        : NetworkService.type !== "none" ? Theme.accent : Theme.subtext0
+                    text: detailRow.modelData[0]
+                    color: Theme.subtext0
                     font.family: Theme.fontMain
-                    font.pixelSize: 18
+                    font.pixelSize: 11
+                    Layout.preferredWidth: 58
+                }
+                Text {
+                    text: detailRow.modelData[1]
+                    color: Theme.text
+                    font.family: Theme.fontMain
+                    font.pixelSize: 11
+                    Layout.fillWidth: true
+                    elide: Text.ElideMiddle
                     renderType: Text.NativeRendering
-                    Behavior on color { ColorAnimation { duration: 150 } }
+                }
+            }
+        }
+    }
+
+    // Section label ("WI-FI NETWORKS", "VPN")
+    component SectionLabel: Text {
+        Layout.leftMargin: 12
+        Layout.topMargin: 4
+        color: Theme.subtext0
+        font.family: Theme.fontMain
+        font.pixelSize: 10
+        font.weight: Font.Bold
+        font.letterSpacing: 1
+        renderType: Text.NativeRendering
+    }
+
+    component Divider: Rectangle {
+        Layout.fillWidth: true
+        Layout.leftMargin: 8
+        Layout.rightMargin: 8
+        implicitHeight: 1
+        color: Theme.glassBorder
+    }
+
+    // ▓▒░ LAYOUT
+
+    // Close on outside click
+    MouseArea {
+        anchors.fill: parent
+        onClicked: panel.visible = false
+    }
+
+    Rectangle {
+        id: card
+        width: 380
+        x: Math.max(12, Math.min(panel.width - width - 12, panel.anchorX - width / 2))
+        y: 48
+        height: Math.min(content.implicitHeight + 20, panel.height - 64)
+        color: Theme.glassBg
+        radius: 14
+        antialiasing: true
+        border.color: Theme.glassBorder
+        border.width: 1
+        clip: true
+
+        // Drop-down animation
+        opacity: panel.visible ? 1 : 0
+        Behavior on opacity { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
+        transform: Translate {
+            y: panel.visible ? 0 : -10
+            Behavior on y { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
+        }
+
+        // Swallow clicks so they don't close the panel
+        MouseArea { anchors.fill: parent }
+
+        Keys.onEscapePressed: panel.visible = false
+        // ↑↓ walk the same focus chain as Tab
+        Keys.onPressed: (event) => {
+            if (event.key === Qt.Key_Down || event.key === Qt.Key_Up) {
+                var next = panel.activeFocusItem ? panel.activeFocusItem.nextItemInFocusChain(event.key === Qt.Key_Down) : null;
+                if (next) next.forceActiveFocus();
+                event.accepted = true;
+            }
+        }
+
+        Flickable {
+            id: flick
+            anchors.fill: parent
+            anchors.margins: 10
+            contentHeight: content.implicitHeight
+            clip: true
+            boundsBehavior: Flickable.StopAtBounds
+            ScrollBar.vertical: ScrollBar {
+                policy: ScrollBar.AsNeeded
+                // Only when content really overflows: the card is sized to its
+                // content, so "equal" is the normal case, not a scroll case.
+                visible: flick.contentHeight > flick.height + 1
+                contentItem: Rectangle {
+                    implicitWidth: 4
+                    radius: 2
+                    color: parent.pressed ? Qt.lighter(Theme.accent, 1.3) : Theme.accent
+                }
+                background: Item {}
+            }
+
+            ColumnLayout {
+                id: content
+                width: parent.width
+                spacing: 4
+
+                // ── Header: title + online pill ──
+                RowLayout {
+                    Layout.fillWidth: true
+                    Layout.leftMargin: 8
+                    Layout.rightMargin: 4
+                    Layout.bottomMargin: 4
+
+                    Text {
+                        text: "Network"
+                        color: Theme.text
+                        font.family: Theme.fontMain
+                        font.pixelSize: 14
+                        font.weight: Font.Bold
+                        Layout.fillWidth: true
+                        renderType: Text.NativeRendering
+                    }
+
+                    Rectangle {
+                        id: onlinePill
+                        readonly property int c: NetworkService.connectivity
+                        readonly property color tone: c === NetworkConnectivity.Full ? Theme.accent
+                            : c === NetworkConnectivity.None ? Theme.error
+                            : c === NetworkConnectivity.Unknown ? Theme.subtext0 : panel.warning
+                        readonly property bool isPortal: c === NetworkConnectivity.Portal
+
+                        implicitHeight: 24
+                        implicitWidth: pillRow.implicitWidth + 18
+                        radius: 12
+                        color: Qt.rgba(tone.r, tone.g, tone.b, 0.14)
+                        border.color: Qt.rgba(tone.r, tone.g, tone.b, 0.5)
+                        border.width: 1
+
+                        Row {
+                            id: pillRow
+                            anchors.centerIn: parent
+                            spacing: 6
+                            Rectangle {
+                                width: 7; height: 7; radius: 3.5
+                                anchors.verticalCenter: parent.verticalCenter
+                                color: onlinePill.tone
+                            }
+                            Text {
+                                text: NetworkService.onlineText + (onlinePill.isPortal ? "  ·  Sign in" : "")
+                                color: onlinePill.tone
+                                font.family: Theme.fontMain
+                                font.pixelSize: 11
+                                font.weight: Font.Bold
+                                renderType: Text.NativeRendering
+                            }
+                        }
+
+                        // A captive portal can only be handled in the browser.
+                        HoverHandler { cursorShape: onlinePill.isPortal ? Qt.PointingHandCursor : Qt.ArrowCursor }
+                        TapHandler {
+                            enabled: onlinePill.isPortal
+                            onTapped: {
+                                NetworkService.openLoginPage();
+                                panel.visible = false;
+                            }
+                        }
+                    }
                 }
 
                 Text {
-                    text: NetworkService.vpnActive
-                            ? "VPN · " + (NetworkService.type === "ethernet" ? "Ethernet"
-                                : NetworkService.ssid || "WiFi")
-                        : NetworkService.type === "ethernet" ? "Ethernet"
-                        : NetworkService.type === "wifi" ? (NetworkService.ssid || "Connected")
-                        : "Disconnected"
-                    color: NetworkService.vpnActive ? Theme.success
-                        : NetworkService.type !== "none" ? Theme.text : Theme.subtext0
+                    visible: !NetworkService.ready
+                    Layout.leftMargin: 12
+                    text: "Connecting to NetworkManager…"
+                    color: Theme.subtext0
                     font.family: Theme.fontMain
                     font.pixelSize: 12
-                    font.weight: Font.Bold
-                    renderType: Text.NativeRendering
                 }
 
-                Item { Layout.fillWidth: true }
-
-                // Wired quick toggle
-                RowLayout {
-                    spacing: 6
+                // ── Ethernet ──
+                Row_ {
+                    id: firstFocus
                     visible: NetworkService.ethernetAvailable
-
-                    Text {
-                        text: "Wired"
-                        color: Theme.subtext0
-                        font.family: Theme.fontMain
-                        font.pixelSize: 9
-                        font.weight: Font.Bold
-                        renderType: Text.NativeRendering
+                    glyph: "󰈀"
+                    title: "Ethernet"
+                    active: NetworkService.ethernetConnected
+                    subtitle: !NetworkService.cablePlugged ? "Cable unplugged"
+                        : NetworkService.ethernetBusy ? "Working…"
+                        : NetworkService.ethernetConnected ? "Connected · " + NetworkService.speedText(NetworkService.linkSpeed)
+                        : "Off"
+                    subtitleColor: NetworkService.ethernetConnected ? Theme.accent : Theme.subtext0
+                    onActivated: {
+                        if (NetworkService.ethernetConnected)
+                            panel.openDetails("ethernet", NetworkService.wiredDevice.name);
+                        else if (NetworkService.cablePlugged)
+                            NetworkService.setEthernet(true);
                     }
 
-                    Rectangle {
-                        width: 34; height: 18; radius: 9
-                        color: NetworkService.ethernetConnected
-                            ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.25)
-                            : Theme.bgSelection
-                        border.color: NetworkService.ethernetConnected
-                            ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.5)
-                            : Theme.borderBase
-                        border.width: 1
-                        Behavior on color { ColorAnimation { duration: 180 } }
-                        Behavior on border.color { ColorAnimation { duration: 180 } }
-
-                        Rectangle {
-                            width: 12; height: 12; radius: 6
-                            color: NetworkService.ethernetConnected ? Theme.accent : Theme.subtext0
-                            anchors.verticalCenter: parent.verticalCenter
-                            x: NetworkService.ethernetConnected ? parent.width - width - 3 : 3
-                            Behavior on x { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
-                            Behavior on color { ColorAnimation { duration: 180 } }
-                        }
-
-                        TapHandler { onTapped: NetworkService.toggleEthernet() }
+                    IconButton {
+                        visible: NetworkService.ethernetConnected
+                        glyph: "󰋼"
+                        tint: panel.detailsFor === "ethernet" ? Theme.accent : Theme.text
+                        onClicked: panel.openDetails("ethernet", NetworkService.wiredDevice.name)
+                    }
+                    Toggle {
+                        checked: NetworkService.ethernetConnected
+                        busy: NetworkService.ethernetBusy || !NetworkService.cablePlugged
+                        onToggled: NetworkService.setEthernet(!NetworkService.ethernetConnected)
                     }
                 }
+                DetailsBlock { visible: panel.detailsFor === "ethernet" && NetworkService.ethernetConnected }
 
-                // WiFi toggle
-                RowLayout {
-                    spacing: 6
+                Divider { visible: NetworkService.ethernetAvailable && NetworkService.wifiAvailable }
 
-                    Text {
-                        text: "Wi-Fi"
-                        color: Theme.subtext0
-                        font.family: Theme.fontMain
-                        font.pixelSize: 9
-                        font.weight: Font.Bold
-                        renderType: Text.NativeRendering
-                    }
+                // ── Wi-Fi ──
+                Row_ {
+                    visible: NetworkService.wifiAvailable
+                    glyph: NetworkService.wifiEnabled ? "󰤨" : "󰤮"
+                    title: "Wi-Fi"
+                    active: NetworkService.activeWifi !== null
+                    subtitle: !NetworkService.wifiHardwareEnabled ? "Blocked by the hardware switch"
+                        : !NetworkService.wifiEnabled ? "Off"
+                        : NetworkService.activeWifi ? "Connected to " + NetworkService.activeWifi.name
+                        : "Not connected"
+                    subtitleColor: NetworkService.activeWifi ? Theme.accent : Theme.subtext0
+                    onActivated: if (NetworkService.wifiHardwareEnabled) NetworkService.setWifiEnabled(!NetworkService.wifiEnabled)
 
-                    Rectangle {
-                        width: 34; height: 18; radius: 9
-                        color: NetworkService.wifiEnabled
-                            ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.25)
-                            : Theme.bgSelection
-                        border.color: NetworkService.wifiEnabled
-                            ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.5)
-                            : Theme.borderBase
-                        border.width: 1
-                        Behavior on color { ColorAnimation { duration: 180 } }
-                        Behavior on border.color { ColorAnimation { duration: 180 } }
-
-                        Rectangle {
-                            width: 12; height: 12; radius: 6
-                            color: NetworkService.wifiEnabled ? Theme.accent : Theme.subtext0
-                            anchors.verticalCenter: parent.verticalCenter
-                            x: NetworkService.wifiEnabled ? parent.width - width - 3 : 3
-                            Behavior on x { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
-                            Behavior on color { ColorAnimation { duration: 180 } }
-                        }
-
-                        TapHandler { onTapped: NetworkService.toggleWifi() }
-                    }
-                }
-            }
-
-            // ── Tab bar ───────────────────────────────────────────────────────
-            Rectangle {
-                Layout.fillWidth: true
-                height: 28
-                radius: 10
-                color: Theme.bgSelection
-
-                Row {
-                    anchors.fill: parent
-                    anchors.margins: 2
-                    spacing: 2
-
-                    Repeater {
-                        model: ["Status", "Wi-Fi", "Saved"]
-                        Rectangle {
-                            width: (parent.width - 8) / 3
-                            height: parent.height
-                            radius: 8
-                            color: networkPanel.currentTab === index
-                                ? Qt.rgba(1, 1, 1, 0.12)
-                                : (tabHover.hovered ? Qt.rgba(1, 1, 1, 0.06) : "transparent")
-                            Behavior on color { ColorAnimation { duration: 120 } }
-
-                            Text {
-                                anchors.centerIn: parent
-                                text: modelData
-                                color: networkPanel.currentTab === index ? Theme.text : Theme.subtext0
-                                font.family: Theme.fontMain
-                                font.pixelSize: 10
-                                font.weight: networkPanel.currentTab === index ? Font.Bold : Font.Normal
-                                renderType: Text.NativeRendering
-                                Behavior on color { ColorAnimation { duration: 120 } }
-                            }
-
-                            HoverHandler { id: tabHover }
-                            TapHandler {
-                                onTapped: {
-                                    networkPanel.currentTab = index;
-                                    if (index === 2)
-                                        networkPanel.loadSaved();
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // ── Divider ───────────────────────────────────────────────────────
-            Rectangle {
-                Layout.fillWidth: true; height: 1
-                color: Theme.borderBase; opacity: 0.4
-            }
-
-            // ══════════════════════════════════════════════════════════════════
-            // TAB 0 — STATUS
-            // ══════════════════════════════════════════════════════════════════
-            ColumnLayout {
-                Layout.fillWidth: true
-                spacing: 6
-                visible: networkPanel.currentTab === 0
-
-                // Disconnected
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    spacing: 6
-                    visible: NetworkService.type === "none"
-
-                    Rectangle {
-                        Layout.fillWidth: true; height: 44; radius: 6
-                        color: Theme.bgSelection
-                        Text {
-                            anchors.centerIn: parent
-                            text: "No network connection"
-                            color: Theme.subtext0; font.family: Theme.fontMain; font.pixelSize: 10
-                            renderType: Text.NativeRendering
-                        }
-                    }
-
-                    RowLayout {
-                        Layout.fillWidth: true; spacing: 6
-
-                        ActionButton {
-                            Layout.fillWidth: true
-                            label: "Connect Wired"
-                            visible: NetworkService.ethernetAvailable
-                            onActivated: NetworkService.connectEthernet()
-                        }
-
-                        ActionButton {
-                            Layout.fillWidth: true
-                            label: "Manage (nmtui)"
-                            onActivated: NetworkService.openManager()
-                        }
-                    }
-                }
-
-                // Connected details
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    spacing: 4
-                    visible: NetworkService.type !== "none"
-
-                    // Connection name banner
-                    Rectangle {
-                        Layout.fillWidth: true; height: 36; radius: 6
-                        color: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.08)
-                        border.color: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.2)
-                        border.width: 1
-
-                        RowLayout {
-                            anchors.fill: parent
-                            anchors.leftMargin: 12; anchors.rightMargin: 12
-
-                            Text {
-                                text: networkPanel.typeIcon(NetworkService.type)
-                                color: Theme.accent
-                                font.family: Theme.fontMain; font.pixelSize: 14
-                                renderType: Text.NativeRendering
-                            }
-                            Text {
-                                Layout.fillWidth: true
-                                text: NetworkService.activeConnectionName
-                                    || (NetworkService.type === "ethernet" ? "Wired Connection"
-                                        : NetworkService.ssid || "WiFi")
-                                color: Theme.text
-                                font.family: Theme.fontMain; font.pixelSize: 10
-                                font.weight: Font.Bold
-                                elide: Text.ElideRight
-                                renderType: Text.NativeRendering
-                            }
-                            Rectangle {
-                                visible: NetworkService.vpnActive
-                                width: vpnLabel.implicitWidth + 8; height: 16; radius: 8
-                                color: Qt.rgba(Theme.success.r, Theme.success.g, Theme.success.b, 0.2)
-                                border.color: Qt.rgba(Theme.success.r, Theme.success.g, Theme.success.b, 0.4)
-                                border.width: 1
-                                Text {
-                                    id: vpnLabel
-                                    anchors.centerIn: parent
-                                    text: "VPN"; color: Theme.success
-                                    font.family: Theme.fontMain; font.pixelSize: 8; font.weight: Font.Bold
-                                    renderType: Text.NativeRendering
-                                }
-                            }
-                        }
-                    }
-
-                    // IP Address row — direct binding, no Repeater/model snapshot bug
-                    DetailRow { label: "IP Address"; value: NetworkService.ipAddress; icon: "󰩠" }
-                    DetailRow { label: "Gateway";    value: NetworkService.gateway;   icon: "󰛳" }
-                    DetailRow { label: "DNS";        value: NetworkService.dnsServers; icon: "󰿔" }
-                    DetailRow { label: "IPv6";       value: NetworkService.ipv6Address; icon: "󰩠" }
-
-                    // WiFi signal bar
-                    Rectangle {
-                        Layout.fillWidth: true; height: 30; radius: 5
-                        color: "transparent"
-                        visible: NetworkService.type === "wifi"
-
-                        RowLayout {
-                            anchors.fill: parent
-                            anchors.leftMargin: 10; anchors.rightMargin: 10
-                            spacing: 8
-
-                            Text {
-                                text: "󰤨"; color: Theme.subtext0
-                                font.family: Theme.fontMain; font.pixelSize: 12
-                                renderType: Text.NativeRendering
-                            }
-                            Text {
-                                text: "Signal"; color: Theme.subtext0
-                                font.family: Theme.fontMain; font.pixelSize: 9; font.weight: Font.Bold
-                                renderType: Text.NativeRendering
-                            }
-                            Item { Layout.fillWidth: true }
-
-                            Row {
-                                spacing: 2
-                                Repeater {
-                                    model: 4
-                                    Rectangle {
-                                        width: 6; height: 6 + index * 3; radius: 1
-                                        anchors.bottom: parent ? parent.bottom : undefined
-                                        color: (NetworkService.signal >= (index + 1) * 25)
-                                            ? Theme.accent : Theme.bgSelection
-                                        Behavior on color { ColorAnimation { duration: 200 } }
-                                    }
-                                }
-                            }
-                            Text {
-                                text: NetworkService.signal + "%"; color: Theme.text
-                                font.family: Theme.fontMain; font.pixelSize: 9
-                                renderType: Text.NativeRendering
-                            }
-                        }
-                    }
-                }
-
-                // Action buttons
-                RowLayout {
-                    Layout.fillWidth: true; spacing: 6
-                    visible: NetworkService.type !== "none"
-
-                    ActionButton {
-                        Layout.fillWidth: true
-                        label: "Disconnect"
-                        isDangerous: true
-                        onActivated: {
-                            if (NetworkService.type === "ethernet") {
-                                NetworkService.disconnectEthernet();
-                            } else if (NetworkService.activeWifiNetwork) {
-                                NetworkService.activeWifiNetwork.disconnect();
-                            }
-                        }
-                    }
-                    ActionButton {
-                        Layout.fillWidth: true
-                        label: "Manage…"
-                        onActivated: NetworkService.openManager()
-                    }
-                }
-            }
-
-            // ══════════════════════════════════════════════════════════════════
-            // TAB 1 — WI-FI
-            // ══════════════════════════════════════════════════════════════════
-            ColumnLayout {
-                Layout.fillWidth: true
-                spacing: 6
-                visible: networkPanel.currentTab === 1
-
-                RowLayout {
-                    Layout.fillWidth: true
-                    Text {
-                        text: "Available Networks"
-                        color: Theme.subtext0; font.family: Theme.fontMain
-                        font.pixelSize: 9; font.weight: Font.Bold
-                        font.capitalization: Font.AllUppercase
-                        font.letterSpacing: 0.8
-                        renderType: Text.NativeRendering
-                    }
-                    Item { Layout.fillWidth: true }
-                    Rectangle {
-                        width: 22; height: 22; radius: 5
-                        color: scanBtnHover.hovered ? Theme.hoverBg : "transparent"
-                        Behavior on color { ColorAnimation { duration: 100 } }
-                        Text {
-                            anchors.centerIn: parent; text: "󰑐"
-                            color: networkPanel.scanPulse ? Theme.accent : Theme.subtext0
-                            font.family: Theme.fontMain; font.pixelSize: 13
-                            renderType: Text.NativeRendering
-                            RotationAnimator on rotation {
-                                running: networkPanel.scanPulse
-                                from: 0; to: 360; duration: 1000; loops: Animation.Infinite
-                            }
-                        }
-                        HoverHandler { id: scanBtnHover }
-                        TapHandler { onTapped: networkPanel.rescan() }
-                    }
-                }
-
-                // WiFi disabled notice
-                Rectangle {
-                    Layout.fillWidth: true; height: 40; radius: 5; color: Theme.bgSelection
-                    visible: !NetworkService.wifiEnabled
-                    Text {
-                        anchors.centerIn: parent; text: "Wi-Fi is disabled"
-                        color: Theme.subtext0; font.family: Theme.fontMain; font.pixelSize: 10
-                        renderType: Text.NativeRendering
+                    Toggle {
+                        checked: NetworkService.wifiEnabled
+                        busy: !NetworkService.wifiHardwareEnabled
+                        onToggled: NetworkService.setWifiEnabled(!NetworkService.wifiEnabled)
                     }
                 }
 
                 // Network list
                 ColumnLayout {
-                    Layout.fillWidth: true; spacing: 3
-                    visible: NetworkService.wifiEnabled
+                    Layout.fillWidth: true
+                    spacing: 2
+                    visible: NetworkService.wifiAvailable && NetworkService.wifiEnabled
+
+                    SectionLabel { text: "NETWORKS" }
 
                     Text {
-                        Layout.fillWidth: true; text: "No networks found"
-                        color: Theme.subtext0; font.family: Theme.fontMain; font.pixelSize: 10
-                        horizontalAlignment: Text.AlignHCenter
-                        visible: networkPanel.wifiNetworks.length === 0
-                        renderType: Text.NativeRendering
+                        visible: NetworkService.sortedWifi.length === 0
+                        Layout.leftMargin: 12
+                        Layout.bottomMargin: 4
+                        text: "Scanning…"
+                        color: Theme.subtext0
+                        font.family: Theme.fontMain
+                        font.pixelSize: 12
                     }
 
                     Repeater {
-                        model: networkPanel.wifiNetworks
+                        model: ScriptModel { values: NetworkService.sortedWifi }
+
+                        delegate: ColumnLayout {
+                            id: netItem
+                            required property var modelData
+                            readonly property var net: modelData
+                            readonly property bool connecting: net.state === ConnectionState.Connecting
+                            readonly property bool expanded: panel.expandedNetwork === net
+                            readonly property string error: panel.wifiErrors[net.name] || ""
+                            Layout.fillWidth: true
+                            spacing: 2
+
+                            Row_ {
+                                id: netRow
+                                glyph: panel.signalGlyph(netItem.net.signalStrength)
+                                title: netItem.net.name
+                                active: netItem.net.connected
+                                subtitle: netItem.error ? netItem.error
+                                    : netItem.connecting ? "Connecting…"
+                                    : netItem.net.connected ? "Connected"
+                                    : netItem.net.known ? "Saved · " + panel.securityText(netItem.net)
+                                    : panel.securityText(netItem.net)
+                                subtitleColor: netItem.error ? Theme.error
+                                    : netItem.net.connected || netItem.connecting ? Theme.accent : Theme.subtext0
+                                onActivated: panel.activateNetwork(netItem.net)
+
+                                // Action buttons: on hover or keyboard focus
+                                RowLayout {
+                                    spacing: 4
+                                    visible: netRow.hovered || netRow.activeFocus
+                                    IconButton {
+                                        visible: netItem.net.connected
+                                        glyph: "󰋼"
+                                        tint: panel.detailsFor === "wifi" ? Theme.accent : Theme.text
+                                        onClicked: panel.openDetails("wifi", NetworkService.wifiDevice.name)
+                                    }
+                                    IconButton {
+                                        visible: netItem.net.connected
+                                        glyph: "󰖪"
+                                        onClicked: NetworkService.disconnectWifi(netItem.net)
+                                    }
+                                    IconButton {
+                                        visible: netItem.net.known
+                                        glyph: "󰆴"
+                                        tint: Theme.error
+                                        onClicked: NetworkService.forgetWifi(netItem.net)
+                                    }
+                                }
+                                Text {
+                                    visible: NetworkService.isSecured(netItem.net) && !(netRow.hovered || netRow.activeFocus)
+                                    text: "󰌾"
+                                    color: Theme.subtext0
+                                    font.family: Theme.fontMain
+                                    font.pixelSize: 12
+                                }
+                            }
+
+                            DetailsBlock { visible: netItem.net.connected && panel.detailsFor === "wifi" }
+
+                            // Inline password (also reopened after a wrong password)
+                            RowLayout {
+                                visible: netItem.expanded
+                                Layout.fillWidth: true
+                                Layout.leftMargin: 54
+                                Layout.rightMargin: 10
+                                Layout.bottomMargin: 6
+                                spacing: 8
+
+                                Field {
+                                    id: pwField
+                                    Layout.fillWidth: true
+                                    placeholder: "Password"
+                                    secret: true
+                                    onAccepted: connectBtn.clicked()
+                                    onVisibleChanged: {
+                                        if (visible) { text = ""; input.forceActiveFocus(); }
+                                    }
+                                }
+                                PillButton {
+                                    id: connectBtn
+                                    label: "Connect"
+                                    enabled_: pwField.text.length >= 8
+                                    onClicked: {
+                                        if (!enabled_) return;
+                                        panel.clearError(netItem.net);
+                                        NetworkService.connectWithPassword(netItem.net, pwField.text);
+                                        pwField.text = "";
+                                        panel.expandedNetwork = null;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Join a hidden network
+                    Row_ {
+                        glyph: "󰐕"
+                        title: "Join other network…"
+                        subtitle: panel.hiddenBusy ? "Connecting…" : panel.hiddenMessage
+                        subtitleColor: panel.hiddenMessage ? Theme.error : Theme.accent
+                        onActivated: {
+                            panel.hiddenOpen = !panel.hiddenOpen;
+                            if (panel.hiddenOpen) ssidField.input.forceActiveFocus();
+                        }
+                    }
+                    ColumnLayout {
+                        visible: panel.hiddenOpen
+                        Layout.fillWidth: true
+                        Layout.leftMargin: 54
+                        Layout.rightMargin: 10
+                        Layout.bottomMargin: 6
+                        spacing: 6
+
+                        Field { id: ssidField; Layout.fillWidth: true; placeholder: "Network name (SSID)"; onAccepted: hiddenPw.input.forceActiveFocus() }
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 8
+                            Field { id: hiddenPw; Layout.fillWidth: true; placeholder: "Password (empty if open)"; secret: true; onAccepted: joinBtn.clicked() }
+                            PillButton {
+                                id: joinBtn
+                                label: "Join"
+                                enabled_: ssidField.text.length > 0 && !panel.hiddenBusy
+                                          && (hiddenPw.text.length === 0 || hiddenPw.text.length >= 8)
+                                onClicked: {
+                                    if (!enabled_) return;
+                                    panel.hiddenBusy = true;
+                                    panel.hiddenMessage = "";
+                                    NetworkService.joinHidden(ssidField.text, hiddenPw.text);
+                                    hiddenPw.text = "";
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Divider {}
+
+                // ── DNS (the same as CachyOS Hello's DNS page) ──
+                SectionLabel { text: "DNS" }
+
+                Row_ {
+                    glyph: "󰒍"
+                    title: NetworkService.dns.preset === "" ? "Automatic (router)" : NetworkService.dns.preset
+                    active: NetworkService.dns.preset !== ""
+                    subtitle: NetworkService.dnsBusy ? "Applying…"
+                        : !NetworkService.dns.conn ? "No active connection"
+                        : (NetworkService.dns.preset === "" ? "From the router"
+                           : NetworkService.dns.dot ? "Encrypted · DNS over TLS" : "Not encrypted")
+                          + " · " + NetworkService.dns.conn
+                    subtitleColor: NetworkService.dns.preset !== "" && NetworkService.dns.dot ? Theme.accent : Theme.subtext0
+                    onActivated: {
+                        panel.dnsOpen = !panel.dnsOpen;
+                        if (panel.dnsOpen) panel.dnsUseDot = NetworkService.dns.preset === "" ? true : NetworkService.dns.dot;
+                    }
+
+                    Text {
+                        text: panel.dnsOpen ? "󰅀" : "󰅂"
+                        color: Theme.subtext0
+                        font.family: Theme.fontMain
+                        font.pixelSize: 14
+                    }
+                }
+
+                ColumnLayout {
+                    visible: panel.dnsOpen && NetworkService.dns.conn !== ""
+                    Layout.fillWidth: true
+                    Layout.leftMargin: 12
+                    Layout.rightMargin: 8
+                    Layout.bottomMargin: 6
+                    spacing: 2
+
+                    // Encryption switch. Changing it re-applies the current
+                    // provider right away, like picking it again in Hello.
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Layout.bottomMargin: 4
+                        spacing: 10
+                        Text {
+                            text: "Encrypted (DNS over TLS)"
+                            color: Theme.text
+                            font.family: Theme.fontMain
+                            font.pixelSize: 12
+                            Layout.fillWidth: true
+                            renderType: Text.NativeRendering
+                        }
+                        Toggle {
+                            checked: panel.dnsUseDot
+                            busy: NetworkService.dnsBusy
+                            onToggled: {
+                                panel.dnsUseDot = !panel.dnsUseDot;
+                                var cur = NetworkService.dnsPresets.find(p => p.name === NetworkService.dns.preset);
+                                if (cur) NetworkService.setDns(cur, panel.dnsUseDot);
+                            }
+                        }
+                    }
+
+                    Repeater {
+                        // "Automatic" first, then Hello's list in Hello's order
+                        model: [{ name: "", label: "Automatic (router)" }].concat(
+                                   NetworkService.dnsPresets.map(p => ({ name: p.name, label: p.name, dot: p.dot })))
 
                         delegate: Rectangle {
-                            id: wifiRow
-                            Layout.fillWidth: true; height: 38; radius: 5
-
-                            readonly property bool isConnected: modelData.connected
-                            readonly property bool isConnecting: modelData.stateChanging
-                            readonly property bool isOpen: modelData.security === WifiSecurityType.Open
-                                || modelData.security === WifiSecurityType.Owe
-
-                            color: isConnected
-                                ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, wifiRowHover.hovered ? 0.18 : 0.10)
-                                : (wifiRowHover.hovered ? Theme.hoverBg : "transparent")
-                            border.color: isConnected
-                                ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.3) : "transparent"
+                            id: dnsItem
+                            required property var modelData
+                            readonly property bool current: NetworkService.dns.preset === modelData.name
+                            Layout.fillWidth: true
+                            implicitHeight: 30
+                            radius: 8
+                            activeFocusOnTab: true
+                            color: current ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.14)
+                                 : dnsHover.hovered || activeFocus ? Theme.hoverBg : "transparent"
+                            border.color: current ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.45) : "transparent"
                             border.width: 1
-                            Behavior on color { ColorAnimation { duration: 120 } }
+
+                            function pick() {
+                                if (NetworkService.dnsBusy || current) return;
+                                if (modelData.name === "") NetworkService.resetDns();
+                                else NetworkService.setDns(NetworkService.dnsPresets.find(p => p.name === modelData.name),
+                                                           panel.dnsUseDot);
+                            }
+                            Keys.onReturnPressed: pick()
+                            Keys.onSpacePressed: pick()
 
                             RowLayout {
-                                anchors.fill: parent
-                                anchors.leftMargin: 10; anchors.rightMargin: 6
+                                anchors { fill: parent; leftMargin: 10; rightMargin: 10 }
                                 spacing: 8
-
                                 Text {
-                                    text: networkPanel.signalIcon(Math.round(modelData.signalStrength))
-                                    color: wifiRow.isConnected ? Theme.accent : Theme.subtext0
-                                    font.family: Theme.fontMain; font.pixelSize: 13
+                                    text: dnsItem.modelData.label
+                                    color: dnsItem.current ? Theme.accent : Theme.text
+                                    font.family: Theme.fontMain
+                                    font.pixelSize: 12
+                                    font.weight: dnsItem.current ? Font.Bold : Font.Normal
+                                    Layout.fillWidth: true
+                                    elide: Text.ElideRight
                                     renderType: Text.NativeRendering
                                 }
-
-                                ColumnLayout {
-                                    Layout.fillWidth: true; spacing: 1
-                                    Text {
-                                        text: modelData.name; color: Theme.text
-                                        font.family: Theme.fontMain; font.pixelSize: 10
-                                        font.weight: wifiRow.isConnected ? Font.Bold : Font.Normal
-                                        elide: Text.ElideRight; Layout.maximumWidth: 150
-                                        renderType: Text.NativeRendering
-                                    }
-                                    Text {
-                                        text: wifiRow.isConnected ? "Connected"
-                                            : wifiRow.isOpen ? "Open"
-                                                : "󰌾 " + WifiSecurityType.toString(modelData.security)
-                                        color: wifiRow.isConnected ? Theme.accent : Theme.subtext0
-                                        font.family: Theme.fontMain; font.pixelSize: 8
-                                        renderType: Text.NativeRendering
-                                    }
-                                }
-
+                                // Hello offers these two as plain DNS only
                                 Text {
-                                    text: Math.round(modelData.signalStrength) + "%"; color: Theme.subtext0
-                                    font.family: Theme.fontMain; font.pixelSize: 8
-                                    renderType: Text.NativeRendering
+                                    visible: dnsItem.modelData.name !== "" && !dnsItem.modelData.dot
+                                    text: "no encryption"
+                                    color: Theme.subtext0
+                                    font.family: Theme.fontMain
+                                    font.pixelSize: 10
                                 }
-
-                                // Spinner while connecting
                                 Text {
-                                    visible: wifiRow.isConnecting; text: "󰑐"; color: Theme.accent
-                                    font.family: Theme.fontMain; font.pixelSize: 13
-                                    renderType: Text.NativeRendering
-                                    RotationAnimator on rotation {
-                                        running: wifiRow.isConnecting
-                                        from: 0; to: 360; duration: 900; loops: Animation.Infinite
-                                    }
-                                }
-
-                                // Forget (on non-connected rows, reveal on hover)
-                                Rectangle {
-                                    visible: !wifiRow.isConnecting && !wifiRow.isConnected
-                                    width: 24; height: 24; radius: 4
-                                    opacity: wifiRowHover.hovered ? 1.0 : 0.0
-                                    color: forgetHover.hovered
-                                        ? Qt.rgba(Theme.error.r, Theme.error.g, Theme.error.b, 0.2) : "transparent"
-                                    Behavior on opacity { NumberAnimation { duration: 150 } }
-                                    Behavior on color { ColorAnimation { duration: 100 } }
-                                    Text {
-                                        anchors.centerIn: parent; text: "󰆴"
-                                        color: forgetHover.hovered ? Theme.error : Theme.subtext0
-                                        font.family: Theme.fontMain; font.pixelSize: 11
-                                        renderType: Text.NativeRendering
-                                    }
-                                    HoverHandler { id: forgetHover }
-                                    TapHandler { onTapped: networkPanel.forgetWifi(modelData) }
-                                }
-
-                                // Disconnect (on connected row)
-                                Rectangle {
-                                    visible: !wifiRow.isConnecting && wifiRow.isConnected
-                                    width: 24; height: 24; radius: 4
-                                    color: discRowHover.hovered
-                                        ? Qt.rgba(Theme.error.r, Theme.error.g, Theme.error.b, 0.2) : "transparent"
-                                    Behavior on color { ColorAnimation { duration: 100 } }
-                                    Text {
-                                        anchors.centerIn: parent; text: "󰖪"
-                                        color: discRowHover.hovered ? Theme.error : Theme.subtext0
-                                        font.family: Theme.fontMain; font.pixelSize: 12
-                                        renderType: Text.NativeRendering
-                                    }
-                                    HoverHandler { id: discRowHover }
-                                    TapHandler { onTapped: modelData.disconnect() }
+                                    visible: dnsItem.current
+                                    text: "󰄬"
+                                    color: Theme.accent
+                                    font.family: Theme.fontMain
+                                    font.pixelSize: 13
                                 }
                             }
-
-                            HoverHandler { id: wifiRowHover }
-                            TapHandler {
-                                onTapped: {
-                                    if (!wifiRow.isConnected && !wifiRow.isConnecting)
-                                        networkPanel.tryConnect(modelData)
-                                }
-                            }
+                            HoverHandler { id: dnsHover; cursorShape: Qt.PointingHandCursor }
+                            TapHandler { onTapped: dnsItem.pick() }
                         }
                     }
                 }
 
-                // Hidden network
-                Rectangle {
-                    Layout.fillWidth: true; height: 28; radius: 5
-                    color: hiddenBtnHover.hovered ? Theme.hoverBg : "transparent"
-                    visible: NetworkService.wifiEnabled
-                    Behavior on color { ColorAnimation { duration: 100 } }
+                Divider {}
 
-                    RowLayout {
-                        anchors.fill: parent; anchors.leftMargin: 10; spacing: 6
-                        Text { text: "󰛴"; color: Theme.subtext0; font.family: Theme.fontMain; font.pixelSize: 12; renderType: Text.NativeRendering }
-                        Text { text: "Connect to hidden network…"; color: Theme.subtext0; font.family: Theme.fontMain; font.pixelSize: 9; renderType: Text.NativeRendering }
-                    }
-                    HoverHandler { id: hiddenBtnHover }
-                    TapHandler {
-                        onTapped: {
-                            networkPanel.hiddenSsid = "";
-                            networkPanel.hiddenPassword = "";
-                            networkPanel.showPassword = false;
-                            networkPanel.showHiddenPrompt = true;
-                        }
-                    }
-                }
-            }
-
-            // ══════════════════════════════════════════════════════════════════
-            // TAB 2 — SAVED CONNECTIONS
-            // ══════════════════════════════════════════════════════════════════
-            ColumnLayout {
-                Layout.fillWidth: true; spacing: 4
-                visible: networkPanel.currentTab === 2
-
-                Text {
-                    text: "Saved Connections"
-                    color: Theme.subtext0; font.family: Theme.fontMain
-                    font.pixelSize: 9; font.weight: Font.Bold
-                    font.capitalization: Font.AllUppercase
-                    font.letterSpacing: 0.8
-                    renderType: Text.NativeRendering
-                }
-
-                Text {
-                    text: "No saved connections"
-                    color: Theme.subtext0; font.family: Theme.fontMain; font.pixelSize: 10
-                    visible: networkPanel.savedConnections.length === 0
-                    renderType: Text.NativeRendering
-                }
+                // ── VPN ──
+                SectionLabel { text: "VPN" }
 
                 Repeater {
-                    model: networkPanel.savedConnections
+                    model: NetworkService.vpns
 
-                    delegate: ColumnLayout {
-                        Layout.fillWidth: true; spacing: 2
+                    delegate: Row_ {
+                        id: vpnRow
+                        required property var modelData
+                        glyph: "󰦝"
+                        title: modelData.name
+                        active: modelData.active
+                        subtitle: panel.vpnBusy === modelData.name ? "Working…"
+                            : (modelData.type === "wireguard" ? "WireGuard" : "VPN") + (modelData.active ? " · Connected" : "")
+                        subtitleColor: modelData.active ? Theme.accent : Theme.subtext0
+                        onActivated: vpnToggle.toggled()
 
-                        Rectangle {
-                            id: savedRow
-                            Layout.fillWidth: true; height: 38; radius: 5
-                            readonly property bool isActive: modelData.active
-                            color: isActive
-                                ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, savedRowHover.hovered ? 0.18 : 0.10)
-                                : (savedRowHover.hovered ? Theme.hoverBg : "transparent")
-                            border.color: isActive
-                                ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.3) : "transparent"
-                            border.width: 1
-                            Behavior on color { ColorAnimation { duration: 120 } }
-
-                            RowLayout {
-                                anchors.fill: parent
-                                anchors.leftMargin: 10; anchors.rightMargin: 6
-                                spacing: 8
-
-                                Text {
-                                    text: networkPanel.typeIcon(modelData.type)
-                                    color: savedRow.isActive ? Theme.accent : Theme.subtext0
-                                    font.family: Theme.fontMain; font.pixelSize: 13
-                                    renderType: Text.NativeRendering
-                                }
-                                ColumnLayout {
-                                    Layout.fillWidth: true; spacing: 1
-                                    Text {
-                                        text: modelData.name; color: Theme.text
-                                        font.family: Theme.fontMain; font.pixelSize: 10
-                                        font.weight: savedRow.isActive ? Font.Bold : Font.Normal
-                                        elide: Text.ElideRight; Layout.maximumWidth: 150
-                                        renderType: Text.NativeRendering
-                                    }
-                                    Text {
-                                        text: savedRow.isActive ? "Connected" : modelData.type
-                                        color: savedRow.isActive ? Theme.accent : Theme.subtext0
-                                        font.family: Theme.fontMain; font.pixelSize: 8
-                                        renderType: Text.NativeRendering
-                                    }
-                                }
-
-                                // Connect / Disconnect button
-                                Rectangle {
-                                    visible: savedRowHover.hovered
-                                    width: 24; height: 24; radius: 4
-                                    color: conBtnHover.hovered
-                                        ? (savedRow.isActive
-                                            ? Qt.rgba(Theme.error.r, Theme.error.g, Theme.error.b, 0.2)
-                                            : Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.2))
-                                        : "transparent"
-                                    Behavior on color { ColorAnimation { duration: 100 } }
-                                    Text {
-                                        anchors.centerIn: parent
-                                        text: savedRow.isActive ? "󰖪" : "󰖩"
-                                        color: savedRow.isActive ? Theme.error : Theme.accent
-                                        font.family: Theme.fontMain; font.pixelSize: 12
-                                        renderType: Text.NativeRendering
-                                    }
-                                    HoverHandler { id: conBtnHover }
-                                    TapHandler {
-                                        onTapped: savedRow.isActive
-                                            ? networkPanel.deactivateConnection(modelData.name)
-                                            : networkPanel.activateConnection(modelData.name)
-                                    }
-                                }
-
-                                // Delete button
-                                Rectangle {
-                                    visible: savedRowHover.hovered && !savedRow.isActive
-                                    width: 24; height: 24; radius: 4
-                                    color: delBtnHover.hovered
-                                        ? Qt.rgba(Theme.error.r, Theme.error.g, Theme.error.b, 0.2) : "transparent"
-                                    Behavior on color { ColorAnimation { duration: 100 } }
-                                    Text {
-                                        anchors.centerIn: parent; text: "󰆴"
-                                        color: delBtnHover.hovered ? Theme.error : Theme.subtext0
-                                        font.family: Theme.fontMain; font.pixelSize: 12
-                                        renderType: Text.NativeRendering
-                                    }
-                                    HoverHandler { id: delBtnHover }
-                                    TapHandler {
-                                        onTapped: {
-                                            networkPanel.confirmDeleteName = modelData.name;
-                                            networkPanel.confirmDeleteUuid = modelData.uuid;
-                                        }
-                                    }
-                                }
-                            }
-
-                            HoverHandler { id: savedRowHover }
-                        }
-
-                        // Delete confirmation inline
-                        Rectangle {
-                            Layout.fillWidth: true; height: 34; radius: 5
-                            visible: networkPanel.confirmDeleteName === modelData.name
-                            color: Qt.rgba(Theme.error.r, Theme.error.g, Theme.error.b, 0.08)
-                            border.color: Qt.rgba(Theme.error.r, Theme.error.g, Theme.error.b, 0.25)
-                            border.width: 1
-
-                            RowLayout {
-                                anchors.fill: parent; anchors.leftMargin: 10; anchors.rightMargin: 6; spacing: 8
-                                Text {
-                                    Layout.fillWidth: true
-                                    text: "Delete \"" + modelData.name + "\"?"
-                                    color: Theme.error; font.family: Theme.fontMain; font.pixelSize: 9
-                                    elide: Text.ElideRight; renderType: Text.NativeRendering
-                                }
-                                Rectangle {
-                                    width: 50; height: 22; radius: 4
-                                    color: cancelDelHover.hovered ? Theme.borderBase : Theme.bgSelection
-                                    Behavior on color { ColorAnimation { duration: 100 } }
-                                    Text {
-                                        anchors.centerIn: parent; text: "Cancel"
-                                        color: Theme.subtext0; font.family: Theme.fontMain
-                                        font.pixelSize: 8; font.weight: Font.Bold; renderType: Text.NativeRendering
-                                    }
-                                    HoverHandler { id: cancelDelHover }
-                                    TapHandler {
-                                        onTapped: {
-                                            networkPanel.confirmDeleteName = "";
-                                            networkPanel.confirmDeleteUuid = "";
-                                        }
-                                    }
-                                }
-                                Rectangle {
-                                    width: 50; height: 22; radius: 4
-                                    color: confirmDelHover.hovered
-                                        ? Qt.rgba(Theme.error.r, Theme.error.g, Theme.error.b, 0.3)
-                                        : Qt.rgba(Theme.error.r, Theme.error.g, Theme.error.b, 0.18)
-                                    border.color: Qt.rgba(Theme.error.r, Theme.error.g, Theme.error.b, 0.4)
-                                    border.width: 1
-                                    Behavior on color { ColorAnimation { duration: 100 } }
-                                    Text {
-                                        anchors.centerIn: parent; text: "Delete"
-                                        color: Theme.error; font.family: Theme.fontMain
-                                        font.pixelSize: 8; font.weight: Font.Bold; renderType: Text.NativeRendering
-                                    }
-                                    HoverHandler { id: confirmDelHover }
-                                    TapHandler { onTapped: networkPanel.deleteConnection(modelData.uuid) }
-                                }
+                        Toggle {
+                            id: vpnToggle
+                            checked: vpnRow.modelData.active
+                            busy: panel.vpnBusy !== ""
+                            onToggled: {
+                                panel.vpnBusy = vpnRow.modelData.name;
+                                NetworkService.setVpn(vpnRow.modelData, !vpnRow.modelData.active);
                             }
                         }
                     }
                 }
 
-                // Edit all connections
-                Rectangle {
-                    Layout.fillWidth: true; height: 28; radius: 5
-                    color: editAllHover.hovered ? Theme.hoverBg : "transparent"
-                    Behavior on color { ColorAnimation { duration: 100 } }
-                    RowLayout {
-                        anchors.fill: parent; anchors.leftMargin: 10; spacing: 6
-                        Text { text: "󰏫"; color: Theme.subtext0; font.family: Theme.fontMain; font.pixelSize: 12; renderType: Text.NativeRendering }
-                        Text { text: "Edit connections (nmtui)…"; color: Theme.subtext0; font.family: Theme.fontMain; font.pixelSize: 9; renderType: Text.NativeRendering }
+                Row_ {
+                    glyph: "󰁯"
+                    title: "Import WireGuard…"
+                    subtitle: panel.importMessage || (NetworkService.vpns.length === 0 ? "No VPNs yet" : "")
+                    subtitleColor: panel.importMessage && panel.importMessage !== "Imported" ? Theme.error : Theme.subtext0
+                    onActivated: {
+                        panel.importOpen = !panel.importOpen;
+                        if (panel.importOpen) NetworkService.findWireguardFiles();
                     }
-                    HoverHandler { id: editAllHover }
-                    TapHandler { onTapped: NetworkService.openManager() }
                 }
-            }
-
-            Item { height: 2 }
-        }
-
-        // ── Password / Hidden network overlay (on top, z:10) ──────────────────
-        Rectangle {
-            anchors.fill: parent
-            radius: Theme.widgetRadius
-            antialiasing: true
-            color: Qt.rgba(Theme.base.r, Theme.base.g, Theme.base.b, 0.97)
-            visible: networkPanel.overlayActive
-            z: 10
-
-            ColumnLayout {
-                anchors.centerIn: parent
-                width: parent.width - 40
-                spacing: 14
-
-                Text {
+                ColumnLayout {
+                    visible: panel.importOpen
                     Layout.fillWidth: true
-                    text: networkPanel.showHiddenPrompt ? "Connect to hidden network" : "Connect to"
-                    color: Theme.subtext0; font.family: Theme.fontMain; font.pixelSize: 10
-                    horizontalAlignment: Text.AlignHCenter; renderType: Text.NativeRendering
-                }
-                Text {
-                    Layout.fillWidth: true
-                    text: networkPanel.pendingSsid
-                    color: Theme.text; font.family: Theme.fontMain
-                    font.pixelSize: 13; font.weight: Font.Bold
-                    horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight
-                    visible: !networkPanel.showHiddenPrompt; renderType: Text.NativeRendering
-                }
+                    Layout.leftMargin: 54
+                    Layout.rightMargin: 10
+                    Layout.bottomMargin: 6
+                    spacing: 4
 
-                // SSID field (hidden network only)
-                Rectangle {
-                    Layout.fillWidth: true; height: 32; radius: 5
-                    color: Theme.bgSelection
-                    border.color: hiddenSsidField.activeFocus ? Theme.accent : Theme.borderBase
-                    border.width: 1
-                    visible: networkPanel.showHiddenPrompt
-                    Behavior on border.color { ColorAnimation { duration: 120 } }
-
-                    RowLayout {
-                        anchors.fill: parent; anchors.leftMargin: 10; anchors.rightMargin: 10; spacing: 6
-                        Text { text: "󰖩"; color: Theme.subtext0; font.family: Theme.fontMain; font.pixelSize: 13 }
-                        Item {
-                            Layout.fillWidth: true; height: parent.height
-                            TextInput {
-                                id: hiddenSsidField
-                                anchors.fill: parent
-                                verticalAlignment: TextInput.AlignVCenter
-                                color: Theme.text; font.family: Theme.fontMain; font.pixelSize: 11
-                                selectionColor: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.35)
-                                text: networkPanel.hiddenSsid
-                                onTextChanged: networkPanel.hiddenSsid = text
-                                Keys.onEscapePressed: networkPanel.cancelOverlay()
-                                Component.onCompleted: if (networkPanel.showHiddenPrompt) forceActiveFocus()
-                            }
-                            Text {
-                                anchors.fill: parent; verticalAlignment: Text.AlignVCenter
-                                text: "Network name (SSID)"; color: Theme.subtext0
-                                font.family: Theme.fontMain; font.pixelSize: 11
-                                visible: hiddenSsidField.text.length === 0; renderType: Text.NativeRendering
-                            }
-                        }
-                    }
-                }
-
-                // Password field
-                Rectangle {
-                    Layout.fillWidth: true; height: 32; radius: 5
-                    color: Theme.bgSelection
-                    border.color: passwordField.activeFocus ? Theme.accent : Theme.borderBase
-                    border.width: 1
-                    Behavior on border.color { ColorAnimation { duration: 120 } }
-
-                    RowLayout {
-                        anchors.fill: parent; anchors.leftMargin: 10; anchors.rightMargin: 10; spacing: 6
-                        Text { text: "󰌾"; color: Theme.subtext0; font.family: Theme.fontMain; font.pixelSize: 13 }
-                        Item {
-                            Layout.fillWidth: true; height: parent.height
-                            TextInput {
-                                id: passwordField
-                                anchors.fill: parent
-                                verticalAlignment: TextInput.AlignVCenter
-                                echoMode: networkPanel.showPassword ? TextInput.Normal : TextInput.Password
-                                color: Theme.text; font.family: Theme.fontMain; font.pixelSize: 11
-                                selectionColor: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.35)
-                                text: networkPanel.showHiddenPrompt ? networkPanel.hiddenPassword : networkPanel.pendingPassword
-                                onTextChanged: {
-                                    if (networkPanel.showHiddenPrompt) networkPanel.hiddenPassword = text;
-                                    else networkPanel.pendingPassword = text;
-                                }
-                                onAccepted: networkPanel.confirmConnect()
-                                Keys.onEscapePressed: networkPanel.cancelOverlay()
-                                Component.onCompleted: if (!networkPanel.showHiddenPrompt) forceActiveFocus()
-                            }
-                            Text {
-                                anchors.fill: parent; verticalAlignment: Text.AlignVCenter
-                                text: "Password"; color: Theme.subtext0
-                                font.family: Theme.fontMain; font.pixelSize: 11
-                                visible: passwordField.text.length === 0; renderType: Text.NativeRendering
-                            }
-                        }
-                    }
-                }
-
-                // Show password
-                Row {
-                    spacing: 6; Layout.alignment: Qt.AlignLeft
-                    CheckBox {
-                        id: showPwCheck
-                        checked: networkPanel.showPassword
-                        onCheckedChanged: networkPanel.showPassword = checked
-                        indicator: Rectangle {
-                            implicitWidth: 14; implicitHeight: 14; radius: 3
-                            color: showPwCheck.checked ? Theme.accent : Theme.bgSelection
-                            border.color: Theme.borderBase; border.width: 1
-                            Behavior on color { ColorAnimation { duration: 100 } }
-                            Text { anchors.centerIn: parent; text: "✓"; color: Theme.base; font.pixelSize: 9; visible: showPwCheck.checked }
-                        }
-                    }
                     Text {
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: "Show password"; color: Theme.subtext0
-                        font.family: Theme.fontMain; font.pixelSize: 10; renderType: Text.NativeRendering
+                        text: NetworkService.wireguardFiles.length ? "Found in ~/Downloads:" : "No WireGuard .conf files in ~/Downloads."
+                        color: Theme.subtext0
+                        font.family: Theme.fontMain
+                        font.pixelSize: 11
                     }
-                }
-
-                // Cancel / Connect buttons
-                RowLayout {
-                    Layout.fillWidth: true; spacing: 8
-
-                    Rectangle {
-                        Layout.fillWidth: true; height: 30; radius: 5
-                        color: cancelPwHover.hovered ? Theme.borderBase : Theme.bgSelection
-                        Behavior on color { ColorAnimation { duration: 100 } }
-                        Text {
-                            anchors.centerIn: parent; text: "Cancel"
-                            color: Theme.subtext0; font.family: Theme.fontMain
-                            font.pixelSize: 10; font.weight: Font.Bold; renderType: Text.NativeRendering
+                    Repeater {
+                        model: NetworkService.wireguardFiles
+                        delegate: Rectangle {
+                            id: fileRow
+                            required property string modelData
+                            Layout.fillWidth: true
+                            implicitHeight: 30
+                            radius: 8
+                            activeFocusOnTab: true
+                            color: fileHover.hovered || activeFocus ? Theme.hoverBg : Qt.rgba(1, 1, 1, 0.04)
+                            Keys.onReturnPressed: NetworkService.importWireguard(modelData)
+                            Text {
+                                anchors { fill: parent; leftMargin: 10; rightMargin: 10 }
+                                verticalAlignment: Text.AlignVCenter
+                                text: "󰈮  " + fileRow.modelData.replace(/^.*\//, "")
+                                color: Theme.text
+                                font.family: Theme.fontMain
+                                font.pixelSize: 12
+                                elide: Text.ElideMiddle
+                            }
+                            HoverHandler { id: fileHover; cursorShape: Qt.PointingHandCursor }
+                            TapHandler { onTapped: NetworkService.importWireguard(fileRow.modelData) }
                         }
-                        HoverHandler { id: cancelPwHover }
-                        TapHandler { onTapped: networkPanel.cancelOverlay() }
                     }
-
-                    Rectangle {
-                        Layout.fillWidth: true; height: 30; radius: 5
-                        color: confirmPwHover.hovered
-                            ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.28)
-                            : Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.18)
-                        border.color: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.45)
-                        border.width: 1
-                        Behavior on color { ColorAnimation { duration: 100 } }
-                        Text {
-                            anchors.centerIn: parent; text: "Connect"
-                            color: Theme.text; font.family: Theme.fontMain
-                            font.pixelSize: 10; font.weight: Font.Bold; renderType: Text.NativeRendering
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Layout.topMargin: 2
+                        spacing: 8
+                        Field { id: pathField; Layout.fillWidth: true; placeholder: "…or a path to a .conf file"; onAccepted: importBtn.clicked() }
+                        PillButton {
+                            id: importBtn
+                            label: "Import"
+                            enabled_: pathField.text.trim().length > 0
+                            onClicked: {
+                                if (!enabled_) return;
+                                NetworkService.importWireguard(pathField.text.trim().replace(/^~/, Quickshell.env("HOME")));
+                            }
                         }
-                        HoverHandler { id: confirmPwHover }
-                        TapHandler { onTapped: networkPanel.confirmConnect() }
                     }
                 }
             }
         }
-    }
-
-    // ── Inline component: detail row ──────────────────────────────────────────
-    component DetailRow: Rectangle {
-        property string label: ""
-        property string value: ""
-        property string icon: ""
-
-        Layout.fillWidth: true
-        height: value ? 30 : 0
-        visible: value !== ""
-        radius: 5
-        color: drHover.hovered ? Theme.hoverBg : "transparent"
-        Behavior on color { ColorAnimation { duration: 100 } }
-
-        RowLayout {
-            anchors.fill: parent; anchors.leftMargin: 10; anchors.rightMargin: 10; spacing: 8
-            Text { text: icon; color: Theme.subtext0; font.family: Theme.fontMain; font.pixelSize: 12; renderType: Text.NativeRendering }
-            Text { text: label; color: Theme.subtext0; font.family: Theme.fontMain; font.pixelSize: 9; font.weight: Font.Bold; renderType: Text.NativeRendering }
-            Item { Layout.fillWidth: true }
-            Text { text: value; color: Theme.text; font.family: Theme.fontMain; font.pixelSize: 9; elide: Text.ElideLeft; Layout.maximumWidth: 160; renderType: Text.NativeRendering }
-        }
-        HoverHandler { id: drHover }
-    }
-
-    // ── Inline component: action button ──────────────────────────────────────
-    component ActionButton: Rectangle {
-        property string label: ""
-        property bool isDangerous: false
-        signal activated()
-
-        height: 28; radius: 5
-        color: isDangerous
-            ? (abHover.hovered
-                ? Qt.rgba(Theme.error.r, Theme.error.g, Theme.error.b, 0.2)
-                : Qt.rgba(Theme.error.r, Theme.error.g, Theme.error.b, 0.10))
-            : (abHover.hovered ? Theme.borderBase : Theme.bgSelection)
-        border.color: isDangerous ? Qt.rgba(Theme.error.r, Theme.error.g, Theme.error.b, 0.3) : "transparent"
-        border.width: isDangerous ? 1 : 0
-        Behavior on color { ColorAnimation { duration: 100 } }
-
-        Text {
-            anchors.centerIn: parent; text: label
-            color: isDangerous ? Theme.error : Theme.subtext0
-            font.family: Theme.fontMain; font.pixelSize: 9; font.weight: Font.Bold
-            renderType: Text.NativeRendering
-        }
-        HoverHandler { id: abHover }
-        TapHandler { onTapped: parent.activated() }
     }
 }

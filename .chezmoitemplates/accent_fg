@@ -1,0 +1,10 @@
+{{- /*
+  Text colour on the accent (RRGGBB, no "#"): near-black on a bright accent,
+  white otherwise. Mirrors on_accent() in sync_border.py (Graphite's own
+  brightness test, threshold 156) so the target matches what it writes.
+*/ -}}
+{{- $a := includeTemplate "accent" . -}}
+{{- $r := (fromToml (printf "v = 0x%s" (substr 0 2 $a))).v -}}
+{{- $g := (fromToml (printf "v = 0x%s" (substr 2 4 $a))).v -}}
+{{- $b := (fromToml (printf "v = 0x%s" (substr 4 6 $a))).v -}}
+{{- if ge (add (mul $r 299) (mul $g 587) (mul $b 114)) 156000 }}111111{{ else }}ffffff{{ end -}}

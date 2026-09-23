@@ -10,10 +10,11 @@
 -- ordered shutdown, neither of which hl.exec_cmd children get.
 --
 --   quickshell.service      bar, launcher, clipboard, power menu, screenshot,
---                           notifications, network widget  (6 keybinds depend on it)
+--                           notifications, OSD, overview   (8 keybinds depend on it)
 --   awww-daemon.service     wallpaper daemon
 --   cliphist-text.service   clipboard history — text
 --   cliphist-image.service  clipboard history — images
+--   openrgb-server.service  OpenRGB SDK server (scripts/openrgb_color.sh)
 --
 --   systemctl --user status quickshell    to check any of them
 --

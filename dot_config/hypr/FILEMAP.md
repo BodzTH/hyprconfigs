@@ -30,14 +30,14 @@ modules that need them.
 | File | L | Owns | Reads |
 |---|---:|---|---|
 | `modules/environment.lua` | 100 | All `hl.env()`. GPU PCI→cardN resolver. Cursor, GTK, Qt, toolkit, `SSH_AUTH_SOCK`. Mesa gaming vars commented out. No vendor-specific vars — those are host `env` | `hosts` (`.gpu`, `.env`) |
-| `modules/variables.lua` | 35 | App aliases — terminal, browser, editor, file manager | `hosts` (`.apps`) |
+| `modules/variables.lua` | 46 | App aliases — terminal, browser, editor, file manager; personal apps (`thePlan`, `antigravity`) are nil where not installed, so their binds are skipped | `hosts` (`.apps`) |
 | `modules/monitors.lua` | 14 | Thin loop calling `hl.monitor()` | `hosts` (`.monitors`) |
 | `modules/appearance.lua` | 92 | Borders, floating-window snap, rounding, blur, shadow, opacity, dim, render (`direct_scanout` commented out) | — |
 | `modules/animations.lua` | 44 | 8 bezier curves, 17 animation leaves | — |
-| `modules/input.lua` | 54 | Keyboard (`us,ara`), touchpad, cursor (gaming VRR lines commented out), gestures, per-device | `hosts` (`.devices`) |
+| `modules/input.lua` | 62 | Keyboard (`us,ara`), touchpad, cursor (gaming VRR lines commented out), gestures, per-device | `hosts` (`.input` overrides, `.devices`) |
 | `modules/layouts.lua` | 71 | Dwindle, `misc` (incl. `font_family`, lock-restore), `binds`, `ecosystem` | — |
 | `modules/autostart.lua` | 90 | Starts/stops `hyprland-session.target`; awww-socket-sequenced wallpaper restore + border sync | — |
-| `modules/keybindings.lua` | 172 | Every bind. Largest file | `variables` |
+| `modules/keybindings.lua` | 213 | Every bind, via the local `bind()` helper: `Category: Action` descriptions (read by the quickshell cheatsheet) + the global `cheatsheet.actions` registry that lets it run a bind. Largest file | `variables` |
 | `modules/windowrules.lua` | 119 | Window/layer/workspace rules, smart gaps, quickshell blur, auth prompts keep focus, clipboard panel hidden from screenshare | — |
 
 **There are exactly these 10 modules.** A consolidation into `session.lua` /
@@ -67,10 +67,12 @@ Profile keys: `monitors`, `gpu` (PCI addresses, primary first), `env`, `apps`, `
 
 | File | L | Trigger | Does |
 |---|---:|---|---|
-| `scripts/bootstrap.sh` | 72 | **Manual, once per host** | Symlinks `systemd/*.service` and `*.target` → `~/.config/systemd/user`, enables 7 units. Idempotent; skips units not installed, warns and continues on a failed enable |
-| `scripts/sync_border.py` | 160 | `SUPER+SHIFT+W`, wallpaper change, `config.reloaded`, login | Wallpaper → accent color. **Rewrites** `hyprlock.conf`, `hyprtoolkit.conf`, GTK 3/4 CSS, OpenRGB, live border |
+| `scripts/bootstrap.sh` | 73 | Once per host (repo `scripts/bootstrap.sh`), and by `chezmoi apply` whenever `systemd/` or this script changes | Symlinks `systemd/*.service` and `*.target` → `~/.config/systemd/user`, enables 8 units. Idempotent; skips units not installed, warns and continues on a failed enable |
+| `scripts/sync_border.py` | 348 | `SUPER+SHIFT+W`, wallpaper change, `config.reloaded`, login | Wallpaper → accent color. **Rewrites** `hyprlock.conf`, `hyprtoolkit.conf`, GTK 3/4 CSS (`accent_color`/`accent_bg_color`/`accent_fg_color`), Kvantum `GraphiteDark.svg` (rendered from `.svg.in`) + `GraphiteDark.kvconfig` highlight/on-accent keys, qt6ct QSS `/* accent */` line, yazi `theme.toml` (`# accent:` lines), `starship.toml` palette `accent`/`accent2`, kitty `cursor` (+ `SIGUSR1`); OpenRGB (via `openrgb_color.sh`), live border, quickshell accent over IPC, running nvims over RPC (`accent.reload()`). Latest-wins token + lock |
+| `scripts/build_gtk_theme.py` | 169 | By hand, after reinstalling the GTK theme | Rebuilds `~/.themes/Graphite-Dark` GTK 3/4 CSS from pinned upstream Graphite with the accent as runtime `@accent_color` (see `context.md`). Needs `git`, `sassc` |
 | `scripts/awww_transition.sh` | 25 | `SUPER+SHIFT+W`, quickshell WallpaperSelector | Random/explicit wallpaper at monitor refresh rate; calls `sync_border.py` |
-| `scripts/pick_rgb.fish` | 14 | `SUPER+SHIFT+P` | `hyprpicker` → OpenRGB static LED color |
+| `scripts/pick_rgb.fish` | 15 | `SUPER+SHIFT+P` | `hyprpicker` → `openrgb_color.sh` |
+| `scripts/openrgb_color.sh` | 111 | `sync_border.py`, `pick_rgb.fish` | Every OpenRGB write. Server fast path (`--nodetect`), Static/Direct per device, `flock` + latest-wins (lock held 150ms, not the CLI's 1s idle), waits out server detection at login |
 | `scripts/showcase.sh` | — | `SUPER+Print` | Lives in the **chezmoi source tree**, not here — resolved via `chezmoi source-path` |
 
 ## Systemd units
@@ -85,6 +87,7 @@ Edit here, not in `~/.config/systemd/user` — those are symlinks.
 | `systemd/awww-daemon.service` | `background.slice` | `/usr/bin/awww-daemon` |
 | `systemd/cliphist-text.service` | `background.slice` | `wl-paste --type text --watch cliphist store` |
 | `systemd/cliphist-image.service` | `background.slice` | `wl-paste --type image --watch cliphist store` |
+| `systemd/openrgb-server.service` | `background.slice` | `openrgb --server --noautoconnect`. `ConditionPathExists=/usr/bin/openrgb` skips it on hosts without OpenRGB |
 
 Package-provided units `bootstrap.sh` also enables: `hypridle.service`,
 `hyprpolkitagent.service`, `gcr-ssh-agent.socket`.
@@ -94,19 +97,26 @@ Package-provided units `bootstrap.sh` also enables: `hypridle.service`,
 | File | L | Notes |
 |---|---:|---|
 | `hypridle.conf` | 50 | 600s lock → 630s blank → 2700s suspend. Sole definition of `lock_cmd` |
-| `hyprlock.conf` | 94 | Lock screen. `$accent` is **rewritten by `sync_border.py`** |
-| `hyprtoolkit.conf` | 22 | Toolkit theme tokens. `accent` also rewritten at runtime |
+| `hyprlock.conf` | 94 | Lock screen. `$accent` is **rewritten by `sync_border.py`**; chezmoi template (accent + `displayName`) — edit via `chezmoi edit`, `re-add` skips it |
+| `hyprtoolkit.conf` | 22 | Toolkit theme tokens. `accent` also rewritten at runtime; chezmoi template like `hyprlock.conf` |
 
 ## External trees this depends on
 
 | Path | Relationship |
 |---|---|
-| `~/.config/quickshell/` | QML for bar/panels. Its `GlobalShortcut` names must match `keybindings.lua`'s `hl.dsp.global("quickshell:*")` strings |
-| `~/.local/share/chezmoi` | Dotfile source. 34 files under `.config/hypr` tracked — everything except `hyprwiki/` (see `context.md`). `showcase.sh` lives there rather than here, on purpose |
+| `~/.config/quickshell/` | QML for bar/panels. Its `GlobalShortcut` names must match `keybindings.lua`'s `hl.dsp.global("quickshell:*")` strings. `panels/Cheatsheet.qml` (SUPER+H) reads this tree's bind descriptions. `Theme.qml`'s `accent` is set by `sync_border.py` over IPC (`qs ipc call theme setAccent`), persisted in `~/.local/state/hypr/accent` |
+| `~/.local/share/chezmoi` | Dotfile source. 33 files under `.config/hypr` tracked — everything except `hyprwiki/` (see `context.md`). `showcase.sh` lives there rather than here, on purpose |
 | `~/.config/systemd/user/` | Symlinks to `systemd/`, created by `bootstrap.sh` |
-| `~/.config/gtk-3.0`, `gtk-4.0` | `gtk.css` rewritten by `sync_border.py` |
+| `~/.config/gtk-3.0`, `gtk-4.0` | `gtk.css` accent defines rewritten by `sync_border.py` |
+| `~/.themes/Graphite-Dark` | Not chezmoi-tracked. GTK 3/4 CSS **built by `build_gtk_theme.py`** to read `@accent_color`/`@accent_fg_color` at runtime — reinstalling stock Graphite loses the accent |
+| `~/.config/Kvantum/Graphite/` | `GraphiteDark.svg` is **generated** from `GraphiteDark.svg.in` (`@ACCENT@`, `@ACCENT_LIGHT@`, `@ACCENT_DARK@`) by `sync_border.py` — edit the `.in`. `GraphiteDark.kvconfig` highlight + on-accent text keys rewritten. New Qt apps only |
+| `~/.config/qt6ct/qss/hyprblur-round.qss` | Line tagged `/* accent */` (progress chunk; the QSS overrides Kvantum there) rewritten by `sync_border.py` |
+| `~/.config/yazi/theme.toml` | Lines tagged `# accent: fg\|bg` rewritten by `sync_border.py`; new yazi instances only (no live theme reload) |
+| `~/.config/nvim/lua/accent.lua` | Accent → base46 `nord_blue` (read from `~/.local/state/hypr/accent` by `chadrc.lua`). `sync()` recompiles the base46 cache at startup if stale; `reload()` is what `sync_border.py` calls in each running nvim |
+| `~/.config/starship.toml` | Palette keys `accent` (prompt icon) and `accent2` (`❯`, accent hue +60°, darker grey for grey accents) rewritten by `sync_border.py`. Live on the next prompt |
+| `~/.config/kitty/kitty.conf` | `cursor` rewritten by `sync_border.py`; kitty auto-reloads, and gets `SIGUSR1` too |
 | `~/Pictures/Wallpapers` | Source pool for `awww_transition.sh` |
-| `~/.config/config_archive/hypr/` | Retired config, untracked and never loaded. `groups.lua` = archived group theming + tab navigation + `sync_border.py` group accent (2026-09-21); the rest is a June snapshot of the old config |
+| `~/.config/config_archive/` | Retired config, untracked and never loaded. `groups.lua` = archived group theming + tab navigation + `sync_border.py` group accent (2026-09-21); `quickshell/` = the old SUPER+H shortcuts cheatsheet (2026-09-23, since rebuilt as `panels/Cheatsheet.qml`) and the old network panel + bar widget + `NetworkService` + speed widget (2026-09-23, since rebuilt); the rest is a June snapshot of the old config |
 
 ## Keybinding groups
 
@@ -114,29 +124,30 @@ Package-provided units `bootstrap.sh` also enables: `hypridle.service`,
 
 | Lines | Group |
 |---|---|
-| 12-21 | APPLICATION LAUNCHER BINDINGS |
-| 22-31 | QUICKSHELL PANEL TRIGGERS |
-| 32-39 | WINDOW MANAGEMENT |
-| 40-45 | WINDOW RESIZE (repeating) |
-| 46-49 | KEYBOARD LAYOUT SWITCHING |
-| 50-54 | CLIPBOARD MANAGEMENT |
-| 55-69 | SCREENSHOT BINDINGS |
-| 70-75 | WINDOW FOCUS NAVIGATION |
-| 76-82 | WORKSPACE SWITCHING & MOVE WINDOW TO WORKSPACE |
-| 83-90 | SPECIAL WORKSPACES (SCRATCHPADS) |
-| 91-94 | WORKSPACE CYCLING (scroll wheel + arrow key overrides) |
-| 95-98 | MOUSE BINDINGS — drag and resize windows |
-| 99-106 | MULTIMEDIA & BRIGHTNESS (laptop function keys) |
-| 107-112 | MEDIA CONTROL |
-| 113-115 | WALLPAPER TRANSITION (SUPER + SHIFT + W) |
-| 116-118 | OPENRGB COLOR PICKER (SUPER + SHIFT + P) |
-| 119-130 | SESSION LOCK |
-| 131-136 | WINDOW MOVE (direction) — SUPER+SHIFT+arrows stays resize, unchanged |
-| 137-142 | MULTI-MONITOR (matters once a laptop is docked) |
-| 143-146 | WORKSPACE CYCLING (keyboard) |
-| 147-153 | WINDOW UTILITIES |
-| 154-156 | COLOR PICKER (SUPER + I) — hyprpicker is installed but was unbound |
-| 157-158 | RELOAD CONFIG |
+| 12-48 | BIND HELPER + CHEATSHEET REGISTRY |
+| 49-59 | APPLICATION LAUNCHER BINDINGS |
+| 60-72 | QUICKSHELL PANEL TRIGGERS |
+| 73-80 | WINDOW MANAGEMENT |
+| 81-86 | WINDOW RESIZE (repeating) |
+| 87-90 | KEYBOARD LAYOUT SWITCHING |
+| 91-95 | CLIPBOARD MANAGEMENT |
+| 96-115 | SCREENSHOT BINDINGS |
+| 116-121 | WINDOW FOCUS NAVIGATION |
+| 122-128 | WORKSPACE SWITCHING & MOVE WINDOW TO WORKSPACE |
+| 129-136 | SPECIAL WORKSPACES (SCRATCHPADS) |
+| 137-140 | WORKSPACE CYCLING (scroll wheel + arrow key overrides) |
+| 141-144 | MOUSE BINDINGS — drag and resize windows |
+| 145-157 | MULTIMEDIA & BRIGHTNESS (laptop function keys) |
+| 158-167 | MEDIA CONTROL |
+| 168-170 | WALLPAPER TRANSITION (SUPER + SHIFT + W) |
+| 171-173 | OPENRGB COLOR PICKER (SUPER + SHIFT + P) |
+| 174-185 | SESSION LOCK |
+| 186-191 | WINDOW MOVE (direction) — SUPER+SHIFT+arrows stays resize, unchanged |
+| 192-197 | MULTI-MONITOR (matters once a laptop is docked) |
+| 198-201 | WORKSPACE CYCLING (keyboard) |
+| 202-208 | WINDOW UTILITIES |
+| 209-211 | COLOR PICKER (SUPER + I) — hyprpicker is installed but was unbound |
+| 212-213 | RELOAD CONFIG |
 
 ## Not config
 

@@ -1,0 +1,16 @@
+{{- /*
+  The wallpaper accent (RRGGBB, no "#"), as last persisted by
+  ~/.config/hypr/scripts/sync_border.py; Platinum until it first runs.
+
+  Every file sync_border.py rewrites renders its accent through this, so the
+  target state always matches what the script last wrote: its runtime edits are
+  not drift, and `chezmoi apply` never reverts them to a stale colour.
+*/ -}}
+{{- $stateHome := env "XDG_STATE_HOME" | default (joinPath .chezmoi.homeDir ".local/state") -}}
+{{- $state := joinPath $stateHome "hypr/accent" -}}
+{{- $accent := "e5e5e5" -}}
+{{- if stat $state -}}
+{{-   $v := include $state | trim -}}
+{{-   if regexMatch "^[0-9a-fA-F]{6}$" $v }}{{ $accent = $v }}{{ end -}}
+{{- end -}}
+{{- $accent -}}

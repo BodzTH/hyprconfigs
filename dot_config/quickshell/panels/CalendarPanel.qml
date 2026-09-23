@@ -1,9 +1,10 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
+import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Hyprland
-import ".."
+import qs
 
 PanelWindow {
     id: calendarPopup
@@ -21,6 +22,13 @@ PanelWindow {
     MouseArea {
         anchors.fill: parent
         onClicked: calendarPopup.visible = false
+    }
+
+    // `qs ipc call calendar toggle` — the clock click is the normal way in;
+    // this is for scripts and testing.
+    IpcHandler {
+        target: "calendar"
+        function toggle(): void { root.toggleCalendar(); }
     }
 
     property date currentDate: new Date()
@@ -187,12 +195,13 @@ PanelWindow {
                     height: 22
                     radius: 11
                     antialiasing: true
-                    color: prevMouse.hovered ? Theme.bgSelection : "transparent"
+                    color: prevMouse.hovered ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.18) : "transparent"
+                    Behavior on color { ColorAnimation { duration: 100 } }
 
                     Text {
                         anchors.centerIn: parent
                         text: "<"
-                        color: Theme.text
+                        color: Theme.accent
                         font.family: Theme.fontMain
                         font.pixelSize: Theme.fontSize
                         font.weight: Font.Bold
@@ -221,12 +230,13 @@ PanelWindow {
                     height: 22
                     radius: 11
                     antialiasing: true
-                    color: nextMouse.hovered ? Theme.bgSelection : "transparent"
+                    color: nextMouse.hovered ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.18) : "transparent"
+                    Behavior on color { ColorAnimation { duration: 100 } }
 
                     Text {
                         anchors.centerIn: parent
                         text: ">"
-                        color: Theme.text
+                        color: Theme.accent
                         font.family: Theme.fontMain
                         font.pixelSize: Theme.fontSize
                         font.weight: Font.Bold
@@ -243,7 +253,7 @@ PanelWindow {
             Rectangle {
                 Layout.fillWidth: true
                 height: 1
-                color: Theme.bgSelection
+                color: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.35)
             }
 
             // Weekdays
@@ -261,7 +271,8 @@ PanelWindow {
                         Text {
                             anchors.centerIn: parent
                             text: modelData
-                            color: Theme.subtext0
+                            // Weekend columns (Sa, Su) carry the accent
+                            color: index >= 5 ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.8) : Theme.subtext0
                             font.family: Theme.fontMain
                             font.pixelSize: Theme.fontSize - 1
                             font.weight: Font.Bold
@@ -284,20 +295,38 @@ PanelWindow {
                     Rectangle {
                         width: calendarPopup.cellSize
                         height: calendarPopup.cellSize
-                        radius: 14
+                        radius: 8
                         antialiasing: true
-                        color: model.isToday ? Theme.text : "transparent"
-                        border.color: model.isToday ? Theme.text : "transparent"
+                        // Today: the bar's quiet glass lift (see bar/BarItem) with
+                        // the number in the accent and a small accent dot under
+                        // it — one accent touch, not an accent block. (A solid
+                        // accent disc, then an accent-tinted box, both read too
+                        // heavy.)
+                        color: model.isToday ? Qt.rgba(1, 1, 1, 0.08) : "transparent"
+                        border.color: model.isToday ? Qt.rgba(1, 1, 1, 0.10) : "transparent"
                         border.width: 1
 
                         Text {
                             anchors.centerIn: parent
                             text: model.day
-                            color: model.isToday ? Theme.base : (model.isCurrentMonth ? Theme.text : Theme.subtext0)
+                            anchors.verticalCenterOffset: model.isToday ? -2 : 0
+                            color: model.isToday ? Theme.accent : (model.isCurrentMonth ? Theme.text : Theme.subtext0)
                             font.family: Theme.fontMain
                             font.pixelSize: Theme.fontSize - 1
-                            font.weight: model.isToday ? Font.Bold : Font.Normal
+                            font.weight: model.isToday ? Font.DemiBold : Font.Normal
                             renderType: Text.NativeRendering
+                        }
+
+                        // Today's dot
+                        Rectangle {
+                            visible: model.isToday
+                            width: 4
+                            height: 4
+                            radius: 2
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            anchors.bottom: parent.bottom
+                            anchors.bottomMargin: 4
+                            color: Theme.accent
                         }
                     }
                 }

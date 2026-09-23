@@ -8,13 +8,13 @@ $mantle   = rgb(1c1c1c)
 $surface0 = rgb(2d2d2d)
 $text     = rgb(e5e5e5)
 $subtext  = rgb(888888)
-$accent   = rgb(5b64b9)
+$accent   = rgb({{ template "accent" . }})
 $red      = rgb(d75f5f)
 $green    = rgb(a3be8c)
 
 # Hex-only variants for Pango markup (no 0x prefix)
 $textAlpha   = e5e5e5
-$accentAlpha = 5b64b9
+$accentAlpha = {{ template "accent" . }}
 
 $font = CaskaydiaCove Nerd Font Italic
 
@@ -82,7 +82,7 @@ input-field {
     inner_color      = $surface0
     font_color       = $text
     fade_on_empty    = true
-    placeholder_text = <span foreground="##$textAlpha"><i>󰌾 Logged in as </i><span foreground="##$accentAlpha">عَبْدُالرَّحْمٰنِ</span></span>
+    placeholder_text = <span foreground="##$textAlpha"><i>󰌾 Logged in as </i><span foreground="##$accentAlpha">{{ .displayName | replace "&" "&amp;" | replace "<" "&lt;" }}</span></span>
     hide_input       = false
     check_color      = $accent
     fail_color       = $red

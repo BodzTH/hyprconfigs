@@ -1,26 +1,20 @@
 import QtQuick
 import Quickshell
-import ".."
+import qs
 
-Rectangle {
+BarItem {
     id: powerBtnWidget
 
     required property var parentWindow
 
-    height: 28
     width: 28
-    radius: 6
-    antialiasing: true
-    activeFocusOnTab: true
     HoverHandler { id: btnHover }
     property bool isHoveredOrFocused: btnHover.hovered || powerBtnWidget.activeFocus
-    color: isHoveredOrFocused ? Theme.hoverBg : "transparent"
     
 
     Keys.onReturnPressed: root.togglePowerMenu()
     Keys.onSpacePressed: root.togglePowerMenu()
 
-    Behavior on color { ColorAnimation { duration: 150 } }
 
     Text {
         anchors.centerIn: parent

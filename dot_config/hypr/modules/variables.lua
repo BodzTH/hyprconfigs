@@ -20,7 +20,18 @@ vars.terminal_editor = "kitty -e nvim"   -- NvChad inside kitty
 vars.notingApp       = "obsidian"
 vars.discord         = "discord"
 vars.updater         = "kitty --class=cachy.update -e sh -c 'sudo pacman -Syu; echo \"\nPress Enter to close...\"; read'"
-vars.antigravity     = home .. "/Apps/Antigravity/Antigravity.AppImage --ozone-platform-hint=auto --enable-features=WaylandWindowDecorations"
+
+-- ▓▒░ PERSONAL APPS (not packaged — only on machines that have them)
+-- nil where the file is missing, so keybindings.lua skips the bind (and the
+-- cheatsheet row) instead of binding a key that silently does nothing.
+local function if_present(path, args)
+    local f = io.open(path, "r")
+    if not f then return nil end
+    f:close()
+    return args and (path .. " " .. args) or path
+end
+vars.antigravity     = if_present(home .. "/Apps/Antigravity/Antigravity.AppImage", "--ozone-platform-hint=auto --enable-features=WaylandWindowDecorations")
+vars.thePlan         = if_present(home .. "/The-Plan/the-plan")
 -- NOTE: vars.bar removed — quickshell is a systemd unit now (../systemd/quickshell.service),
 --       not an exec_cmd. Its `env QT_QPA_PLATFORMTHEME=qt6ct` prefix was also already
 --       redundant: modules/environment.lua exports that var session-wide.

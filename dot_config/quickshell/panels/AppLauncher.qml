@@ -5,7 +5,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Hyprland
-import ".."
+import qs
 
 // AppLauncher — replaces rofi -show drun
 // Triggered by: SUPER+A (global shortcut)
@@ -204,7 +204,10 @@ PanelWindow {
                     implicitWidth: 4
                     radius: 2
                     antialiasing: true
-                    color: Theme.text
+                    // Wallpaper accent (set live by sync_border.py); brighter
+                    // while it is being dragged.
+                    color: parent.pressed ? Qt.lighter(Theme.accent, 1.3) : Theme.accent
+                    Behavior on color { ColorAnimation { duration: 150 } }
                 }
                 background: Item {}
             }

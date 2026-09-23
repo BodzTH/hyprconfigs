@@ -1,26 +1,20 @@
 import QtQuick
 import Quickshell.Hyprland
 import Quickshell.Io
-import ".."
+import qs
 
-Rectangle {
+BarItem {
     id: layoutWidget
 
-    height: 28
     width: layoutText.implicitWidth + 20
-    radius: 6
-    antialiasing: true
     
-    activeFocusOnTab: true
     HoverHandler { id: layoutHover }
     property bool isHoveredOrFocused: layoutHover.hovered || layoutWidget.activeFocus
-    color: isHoveredOrFocused ? Theme.hoverBg : "transparent"
     
 
     Keys.onReturnPressed: switchLayoutProc.running = true
     Keys.onSpacePressed: switchLayoutProc.running = true
 
-    Behavior on color { ColorAnimation { duration: 150 } }
 
     property string currentLayout: "EN"
 

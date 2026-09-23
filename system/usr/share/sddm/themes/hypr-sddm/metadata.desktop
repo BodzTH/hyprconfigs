@@ -1,6 +1,6 @@
 [SddmGreeterTheme]
 Name=hypr-sddm
 Type=sddm-theme
-ConfigFile=bodz.conf
+ConfigFile=theme.conf
 MainScript=Main.qml
 QtVersion=6

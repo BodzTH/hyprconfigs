@@ -1,0 +1,23 @@
+{{- /*
+  Rendered from GraphiteDark.svg.in exactly as sync_border.py's render() does.
+  @ACCENT_LIGHT@/@ACCENT_DARK@ are HLS lightness shifts of the accent that
+  sync_border.py computes; keep whatever it last wrote (render() is line-for-
+  line, so the same line of the live SVG holds it) rather than redo HLS here.
+  Fallbacks are the shifts of Platinum (e5e5e5).
+*/ -}}
+{{- $in := include "dot_config/Kvantum/Graphite/GraphiteDark.svg.in" -}}
+{{- $light := "f7f7f7" -}}
+{{- $dark := "d1d1d1" -}}
+{{- $live := joinPath .chezmoi.homeDir ".config/Kvantum/Graphite/GraphiteDark.svg" -}}
+{{- if stat $live -}}
+{{-   $out := splitList "\n" (include $live) -}}
+{{-   $src := splitList "\n" $in -}}
+{{-   if eq (len $out) (len $src) -}}
+{{-     range $i, $l := $src -}}
+{{-       $hex := regexFind "[0-9a-fA-F]{6}" (regexFind "#[0-9a-fA-F]{6}" (index $out $i)) -}}
+{{-       if and $hex (contains "@ACCENT_LIGHT@" $l) }}{{ $light = $hex }}{{ end -}}
+{{-       if and $hex (contains "@ACCENT_DARK@" $l) }}{{ $dark = $hex }}{{ end -}}
+{{-     end -}}
+{{-   end -}}
+{{- end -}}
+{{- $in | replace "@ACCENT_LIGHT@" (printf "#%s" $light) | replace "@ACCENT_DARK@" (printf "#%s" $dark) | replace "@ACCENT@" (printf "#%s" (includeTemplate "accent" .)) -}}
