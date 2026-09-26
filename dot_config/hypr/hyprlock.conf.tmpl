@@ -59,9 +59,13 @@ label {
 }
 
 # ▓▒░ KEYBOARD LAYOUT INDICATOR
+# SUPER+K switches layout while locked (a `locked` bind in keybindings.lua);
+# hyprlock follows the compositor's xkb group, so this updates immediately.
+# Plain $LAYOUT (xkb's own name) rather than $LAYOUT[en,ar]: an indexed list
+# breaks on a host whose kb_layout has a different count.
 label {
     monitor     =
-    text        = Layout: $LAYOUT
+    text        = 󰌌  $LAYOUT
     color       = $subtext
     font_size   = 18
     font_family = $font
