@@ -88,7 +88,10 @@ bind(m .. " + SHIFT + down",  hl.dsp.window.resize({ x = 0, y = 30, relative = t
 
 -- ▓▒░ KEYBOARD LAYOUT SWITCHING
 -- Cycles through input.kb_layout (modules/input.lua, per-host override in hosts/)
-bind(m .. " + K", hl.dsp.exec_cmd("hyprctl switchxkblayout all next"), { description = "System: Switch keyboard layout" })
+-- locked: also fires under hyprlock, so the password can be typed in either
+-- layout. hyprlock reads the xkb group from the compositor and redraws its
+-- $LAYOUT label on the switch (hyprlock.conf).
+bind(m .. " + K", hl.dsp.exec_cmd("hyprctl switchxkblayout all next"), { locked = true, description = "System: Switch keyboard layout" })
 
 -- ▓▒░ CLIPBOARD MANAGEMENT
 -- SUPER+V opens clipboard history via the quickshell ClipboardPanel

@@ -28,9 +28,10 @@ hl.config({
         disable_splash_rendering     = true,
         background_color             = "0x111111",   -- matches the Onyx base instead of default blue-grey
         font_family                  = "CaskaydiaCove Nerd Font",   -- compositor-drawn text (group tab titles, notifications) matches the bar and hyprlock
-        enable_swallow               = true,
-        -- Terminal windows get "swallowed" (hidden) when they launch a GUI app
-        swallow_regex                = "^(com.mitchellh.ghostty|ghostty|kitty)$",
+        -- Swallowing off: a terminal stays visible while the GUI app it launched is open.
+        -- Set to true to hide ghostty/kitty behind apps they launch again.
+        enable_swallow               = false,
+        swallow_regex               = "^(com.mitchellh.ghostty|ghostty|kitty)$",
         focus_on_activate            = true,
         animate_manual_resizes       = true,
         animate_mouse_windowdragging = true,
@@ -53,8 +54,10 @@ hl.config({
         workspace_back_and_forth          = true,  -- Re-press workspace key to toggle back
         drag_threshold                    = 10,    -- default 0 grabs windows on mousedown; avoids stray drags
         hide_special_on_workspace_change  = true,  -- two scratchpads bound (SUPER+S / SUPER+N)
-        -- NOTE: movefocus_cycles_groupfirst (SUPER+arrows through group tabs) is
-        --       archived with the group theming: ~/.config/config_archive/hypr/groups.lua.
+        -- Inside a group (SUPER+CTRL+G), SUPER+left/right step through its tabs
+        -- first and only leave the group at either end. Without it, hidden tabs
+        -- could only be reached with the mouse (click or scroll the groupbar).
+        movefocus_cycles_groupfirst       = true,
     },
 
     -- NOTE: no `input` block here. repeat_rate, repeat_delay and

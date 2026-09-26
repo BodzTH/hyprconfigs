@@ -80,6 +80,55 @@ map("x", "<M-Down>", ":m '>+1<CR>gv=gv", { desc = "Move selection down" })
 map("n", "<S-M-Down>", "yyp", { desc = "Duplicate line down" })
 map("i", "<S-M-Down>", "<Esc>yypgi", { desc = "Duplicate line down" })
 
+-- Delete Word (Ctrl+Backspace / Ctrl+Delete) the VS Code way: skip spaces, then
+-- one run of word chars or of punctuation. (Vim's dw/db stop after the space.)
+-- At a line edge it joins the neighbouring line. Nothing goes to the clipboard.
+-- kitty.conf sends Alt+Backspace for Ctrl+Backspace (for fish), so map both.
+local word, punct = "[%w_\128-\255]+", "[^%w_%s\128-\255]+"
+local function delete_word(forward)
+  local row, col = unpack(vim.api.nvim_win_get_cursor(0))
+  local line = vim.api.nvim_get_current_line()
+  if forward then
+    if col >= #line then -- end of line: pull the next line up, minus its indent
+      local next_line = vim.api.nvim_buf_get_lines(0, row, row + 1, false)[1]
+      if next_line then
+        vim.api.nvim_buf_set_text(0, row - 1, #line, row, #next_line:match "^%s*", {})
+      end
+      return
+    end
+    local rest = line:sub(col + 1)
+    local n = #rest:match "^%s*"
+    local tail = rest:sub(n + 1)
+    n = n + #(tail:match("^" .. word) or tail:match("^" .. punct) or "")
+    vim.api.nvim_buf_set_text(0, row - 1, col, row - 1, col + n, {})
+  else
+    if col == 0 then -- start of line: join onto the previous line
+      if row > 1 then
+        local prev = vim.api.nvim_buf_get_lines(0, row - 2, row - 1, false)[1]
+        vim.api.nvim_buf_set_text(0, row - 2, #prev, row - 1, 0, {})
+        vim.api.nvim_win_set_cursor(0, { row - 1, #prev })
+      end
+      return
+    end
+    local before = line:sub(1, col)
+    local n = #before:match "%s*$"
+    local head = before:sub(1, #before - n)
+    n = n + #(head:match(word .. "$") or head:match(punct .. "$") or "")
+    vim.api.nvim_buf_set_text(0, row - 1, col - n, row - 1, col, {})
+    vim.api.nvim_win_set_cursor(0, { row, col - n })
+  end
+end
+for _, key in ipairs { "<C-BS>", "<M-BS>" } do
+  map({ "n", "i" }, key, function() delete_word(false) end, { desc = "Delete word before cursor" })
+  map("c", key, "<C-w>", { desc = "Delete word before cursor" })
+end
+map({ "n", "i" }, "<C-Del>", function() delete_word(true) end, { desc = "Delete word after cursor" })
+
+-- kitty.conf also sends Alt+b for Ctrl+Left; in insert mode that would drop to
+-- normal mode, so make it the word-left it was meant to be.
+map("i", "<M-b>", "<C-Left>", { desc = "Word left" })
+map({ "n", "x" }, "<M-b>", "b", { desc = "Word left" })
+
 -- =======================================================
 -- 4. VS CODE NAVIGATION & TOOLS
 -- =======================================================
@@ -107,6 +156,10 @@ map("n", ";", ":", { desc = "Enter command mode", nowait = true })
 -- Visual mode indentation (keeps selection active)
 map("x", "<", "<gv", { desc = "Indent line left and keep selection" })
 map("x", ">", ">gv", { desc = "Indent line right and keep selection" })
+
+-- VS Code Tab / Shift+Tab on a selection (one 'shiftwidth' step, 4 for python)
+map("x", "<Tab>", ">gv", { desc = "Indent selection" })
+map("x", "<S-Tab>", "<gv", { desc = "Unindent selection" })
 
 -- Optional: Map : back to ; just in case you ever need the repeat finding feature
 -- map("n", ":", ";", { desc = "Repeat find char" })
@@ -151,9 +204,12 @@ map("n", "<leader>li", "<cmd>lua vim.lsp.buf.implementation()<cr>",{ desc = "Imp
 map("n", "<leader>lR", "<cmd>lua vim.lsp.buf.rename()<cr>",       { desc = "Rename symbol" })
 map("n", "<leader>la", "<cmd>lua vim.lsp.buf.code_action()<cr>",  { desc = "Code actions" })
 map("n", "<leader>lf", function() require("conform").format { lsp_format = "fallback" } end, { desc = "Format file" })
-map("n", "<leader>lk", "<cmd>lua vim.lsp.buf.hover()<cr>",        { desc = "Hover docs" })
+map("n", "<leader>lk", function() require("configs.hover").at_cursor() end, { desc = "Hover docs" })
 map("n", "<leader>le", "<cmd>lua vim.diagnostic.open_float()<cr>",{ desc = "Line diagnostics" })
 map("n", "<leader>lq", "<cmd>lua vim.diagnostic.setloclist()<cr>",{ desc = "Diagnostics list" })
+map("n", "<leader>lx", "<cmd>Trouble diagnostics toggle<cr>",     { desc = "Problems (workspace)" })
+map("n", "<leader>lX", "<cmd>Trouble diagnostics toggle filter.buf=0<cr>", { desc = "Problems (this file)" })
+map("n", "<C-S-m>", "<cmd>Trouble diagnostics toggle<cr>",        { desc = "Problems panel" })
 map("n", "<leader>ln", function() vim.diagnostic.jump { count = 1, float = true } end,  { desc = "Next diagnostic" })
 map("n", "<leader>lp", function() vim.diagnostic.jump { count = -1, float = true } end, { desc = "Prev diagnostic" })
 map("n", "<leader>ls", "<cmd>Telescope lsp_document_symbols<cr>",  { desc = "Document symbols" })

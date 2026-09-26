@@ -116,7 +116,7 @@ Package-provided units `bootstrap.sh` also enables: `hypridle.service`,
 | `~/.config/starship.toml` | Palette keys `accent` (prompt icon) and `accent2` (`❯`, accent hue +60°, darker grey for grey accents) rewritten by `sync_border.py`. Live on the next prompt |
 | `~/.config/kitty/kitty.conf` | `cursor` rewritten by `sync_border.py`; kitty auto-reloads, and gets `SIGUSR1` too |
 | `~/Pictures/Wallpapers` | Source pool for `awww_transition.sh` |
-| `~/.config/config_archive/` | Retired config, untracked and never loaded. `groups.lua` = archived group theming + tab navigation + `sync_border.py` group accent (2026-09-21); `quickshell/` = the old SUPER+H shortcuts cheatsheet (2026-09-23, since rebuilt as `panels/Cheatsheet.qml`) and the old network panel + bar widget + `NetworkService` + speed widget (2026-09-23, since rebuilt); the rest is a June snapshot of the old config |
+| `~/.config/config_archive/` | Retired config, untracked and never loaded. `groups.lua` = old group theming draft (2026-09-21; superseded by the live `group` block, 2026-09-23); `quickshell/` = the old SUPER+H shortcuts cheatsheet (2026-09-23, since rebuilt as `panels/Cheatsheet.qml`) and the old network panel + bar widget + `NetworkService` + speed widget (2026-09-23, since rebuilt); the rest is a June snapshot of the old config |
 
 ## Keybinding groups
 

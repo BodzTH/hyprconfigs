@@ -18,6 +18,14 @@ M.base46 = {
     -- Must match the key under changed_themes below, or the custom palette is ignored.
     -- Note: the theme picker (<leader>ut) rewrites this line.
     theme = "onedark",
+    integrations = { "trouble" },
+    -- VSCode-style squiggles under errors (kitty draws coloured undercurls).
+    hl_add = {
+        DiagnosticUnderlineError = { undercurl = true, sp = "red" },
+        DiagnosticUnderlineWarn  = { undercurl = true, sp = "yellow" },
+        DiagnosticUnderlineInfo  = { undercurl = true, sp = "green" },
+        DiagnosticUnderlineHint  = { undercurl = true, sp = "purple" },
+    },
     changed_themes = {
         -- Wallpaper accent (lua/accent.lua), under `all` so it survives the theme picker.
         all = { base_30 = { nord_blue = require("accent").get() } },

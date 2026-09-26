@@ -153,8 +153,9 @@ live border via `hyprctl eval`, and sets quickshell's accent live over IPC
 (`qs ipc call theme setAccent RRGGBB`). Neovim is not rewritten: its `chadrc.lua`
 reads the accent state file into base46's `nord_blue`, and `sync_border.py`
 calls `require'accent'.reload()` in each `$XDG_RUNTIME_DIR/nvim.*.0` socket to
-recompile base46's cache; a new nvim recompiles at startup if the cache is stale. Group borders are
-deliberately not synced — group theming is archived (see below).
+recompile base46's cache; a new nvim recompiles at startup if the cache is stale. The same
+eval also sets the group border and the active group tab's indicator line;
+`appearance.lua`'s `group` block holds the boot-time placeholders.
 
 The colour is picked by a chroma²-weighted hue histogram, so a small vivid accent
 beats a large dull backdrop. The earlier count-weighted scorer turned muted
@@ -239,9 +240,8 @@ toggle` opens it from a script. Its layer namespace `quickshell-network` is in
 `windowrules.lua`'s blur rule.
 
 Retired config goes to `~/.config/config_archive/` — outside this tree and outside
-chezmoi, and nothing loads it. Group (tabbed window) theming, its tab navigation and
-`sync_border.py`'s group accent were archived there on 2026-09-21 as
-`config_archive/hypr/groups.lua`; groups (SUPER+CTRL+G) use stock colors meanwhile.
+chezmoi, and nothing loads it. `config_archive/hypr/groups.lua` is an old group
+theming draft, superseded on 2026-09-23 by the live `group` block in `appearance.lua`.
 To restore, paste its pieces back into this tree as its header describes. Never
 `require()` it from there — that would put live config outside the tree, which is
 exactly what the one rule forbids.

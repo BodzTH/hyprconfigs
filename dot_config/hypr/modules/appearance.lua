@@ -70,10 +70,41 @@ hl.config({
         dim_strength = 0.1,
     },
 
-    -- NOTE: no `group` block. Group (tabbed window) theming is archived in
-    --       ~/.config/config_archive/hypr/groups.lua, together with its tab
-    --       navigation and sync_border.py's group accent; groups (SUPER+CTRL+G)
-    --       use Hyprland's stock colors. Restore from there instead of rebuilding.
+    -- ▓▒░ GROUPS (tabbed windows — SUPER+CTRL+G, SUPER+left/right between tabs)
+    -- Every "e5e5e5" below is a boot-time placeholder: sync_border.py swaps in
+    -- the wallpaper accent after every reload, the same way it does
+    -- general.col.active_border. Keep them in step with it.
+    group = {
+        col = {
+            border_active          = { colors = {"rgba(e5e5e5ee)", "rgba(e5e5e500)"}, angle = 45 },   -- = general.col.active_border
+            border_inactive        = "rgba(222222ff)",                                                 -- = general.col.inactive_border
+            border_locked_active   = { colors = {"rgba(d75f5fee)", "rgba(d75f5f00)"}, angle = 45 },   -- palette red (hyprlock.conf $red)
+            border_locked_inactive = "rgba(d75f5f66)",
+        },
+        groupbar = {
+            -- Stock layout (title + thin indicator line under it), just clearer:
+            -- bigger bold titles, a thicker indicator, a little air between them.
+            height               = 18,       -- title area; default 14
+            indicator_height     = 3,        -- default 3
+            indicator_gap        = 2,        -- default 0 (line touched the text)
+            rounding             = 2,
+
+            -- Titles use misc.font_family (layouts.lua)
+            font_size            = 11,       -- default 8
+            font_weight_active   = "bold",
+            font_weight_inactive = "normal",
+            text_color                 = "rgba(ffffffff)",
+            text_color_inactive        = "rgba(999999ff)",
+            text_color_locked_active   = "rgba(ffffffff)",
+            text_color_locked_inactive = "rgba(999999ff)",
+            col = {
+                active          = "rgba(e5e5e5ff)",   -- synced to the accent
+                inactive        = "rgba(55555599)",
+                locked_active   = "rgba(d75f5fff)",
+                locked_inactive = "rgba(d75f5f66)",
+            },
+        },
+    },
 
     -- ▓▒░ RENDERING & OPTIMIZATION
     render = {

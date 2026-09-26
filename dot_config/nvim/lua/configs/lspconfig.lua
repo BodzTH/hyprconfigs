@@ -32,3 +32,18 @@ vim.api.nvim_create_autocmd("LspAttach", {
     end
   end,
 })
+
+-- Diagnostics: squiggly underlines (theme colours, see chadrc hl_add), messages
+-- drawn inline by tiny-inline-diagnostic (lua/plugins/init.lua) instead of the
+-- truncated built-in virtual text, worst first.
+vim.diagnostic.config {
+  virtual_text = false,
+  severity_sort = true,
+  float = { border = "rounded", source = "if_many" },
+}
+
+-- Inferred types / parameter names inline (x: int, f(value=...)); <leader>ui toggles.
+vim.lsp.inlay_hint.enable()
+
+-- Hover popup (mouse + K) with type, docs and errors in one place.
+require("configs.hover").setup()

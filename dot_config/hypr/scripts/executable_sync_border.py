@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Sync the Hyprland active border (and hyprlock, hyprtoolkit, quickshell, GTK,
+Sync the Hyprland active border and group tabs (and hyprlock, hyprtoolkit, quickshell, GTK,
 Qt/Kvantum, yazi, neovim, starship, kitty cursor and OpenRGB accents) to the most harmonious
 color in the current wallpaper. Greyscale or near-black wallpapers fall back
 to Platinum.
@@ -299,10 +299,12 @@ def apply(hex_color):
         for key in ("fg", "bg")
     ])
 
-    # Group borders are deliberately not synced: group theming is archived in
-    # ~/.config/config_archive/hypr/groups.lua, which carries this eval's group variant.
-    border = f'{{ "rgba({hex_color}ee)", "rgba({hex_color}00)" }}'
-    lua = f"hl.config({{ general = {{ col = {{ active_border = {{ colors = {border}, angle = 45 }} }} }} }})"
+    # Grouped windows draw group.col.border_active instead of the general border,
+    # so it gets the same gradient; the active tab's indicator line takes the accent too.
+    border = f'{{ colors = {{ "rgba({hex_color}ee)", "rgba({hex_color}00)" }}, angle = 45 }}'
+    lua = (f"hl.config({{ general = {{ col = {{ active_border = {border} }} }}, "
+           f"group = {{ col = {{ border_active = {border} }}, "
+           f'groupbar = {{ col = {{ active = "rgba({hex_color}ff)" }} }} }} }})')
     subprocess.run(["hyprctl", "eval", lua], capture_output=True, timeout=2.0)
 
 
