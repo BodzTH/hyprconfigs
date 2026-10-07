@@ -5,6 +5,7 @@ import Quickshell.Wayland
 import Quickshell.Hyprland
 import Quickshell.Services.Pipewire as Pw
 import Quickshell.Services.Notifications as Notifs
+import Quickshell.Services.Mpris
 import qs.bar
 import qs.panels
 
@@ -63,6 +64,33 @@ ShellRoot {
     onToggleNetwork: (scr, anchorX) => networkPanel.toggle(scr, anchorX)
 
     // ▓▒░ POWER MENU — SUPER+Backspace (GlobalShortcut registered here to avoid duplication per-monitor)
+    // ▓▒░ MEDIA KEYS — XF86Audio{Play,Pause,Next,Prev} in hypr/modules/keybindings.lua.
+    // Driven over MPRIS right here, so they need no playerctl (not installed):
+    // the player that's playing, else the first — the one the bar's media widget shows.
+    readonly property var mediaPlayer: Mpris.players.values.find(p => p.playbackState === MprisPlaybackState.Playing)
+        || Mpris.players.values[0] || null
+
+    GlobalShortcut {
+        appid: "quickshell"
+        name: "media-play-pause"
+        description: "Play / pause the active media player"
+        onPressed: if (root.mediaPlayer && root.mediaPlayer.canTogglePlaying) root.mediaPlayer.togglePlaying()
+    }
+
+    GlobalShortcut {
+        appid: "quickshell"
+        name: "media-next"
+        description: "Next track"
+        onPressed: if (root.mediaPlayer && root.mediaPlayer.canGoNext) root.mediaPlayer.next()
+    }
+
+    GlobalShortcut {
+        appid: "quickshell"
+        name: "media-previous"
+        description: "Previous track"
+        onPressed: if (root.mediaPlayer && root.mediaPlayer.canGoPrevious) root.mediaPlayer.previous()
+    }
+
     GlobalShortcut {
         appid: "quickshell"
         name: "toggle-power-menu"

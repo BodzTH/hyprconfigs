@@ -7,6 +7,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import qs
+import qs.services
 
 // Cheatsheet — SUPER+H or the bar's keyboard button.
 //
@@ -471,6 +472,20 @@ PanelWindow {
                         RowLayout {
                             anchors { fill: parent; leftMargin: 16; rightMargin: 12 }
                             spacing: 12
+
+                            // App rows: the app's icon, the same one the taskbar shows
+                            Image {
+                                readonly property string iconSrc: !entry.isHeader && entry.modelData.cat === "Apps"
+                                    ? AppIconService.appIconForLabel(entry.modelData.title) : ""
+                                visible: iconSrc !== ""
+                                source: iconSrc
+                                Layout.preferredWidth: 22
+                                Layout.preferredHeight: 22
+                                sourceSize: Qt.size(44, 44)
+                                fillMode: Image.PreserveAspectFit
+                                asynchronous: true
+                                smooth: true
+                            }
 
                             ColumnLayout {
                                 Layout.fillWidth: true

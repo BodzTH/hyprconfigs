@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Sync the Hyprland active border and group tabs (and hyprlock, hyprtoolkit, quickshell, GTK,
-Qt/Kvantum, yazi, neovim, starship, kitty cursor and OpenRGB accents) to the most harmonious
+Qt/Kvantum, yazi, neovim, starship, kitty cursor/selection and OpenRGB accents) to the most harmonious
 color in the current wallpaper. Greyscale or near-black wallpapers fall back
 to Platinum.
 
@@ -279,10 +279,13 @@ def apply(hex_color):
         (r'^accent[ \t]*=[ \t]*"#[0-9a-fA-F]{6}"[ \t]*$', f'accent = "#{hex_color}"'),
         (r'^accent2[ \t]*=[ \t]*"#[0-9a-fA-F]{6}"[ \t]*$', f'accent2 = "#{companion(hex_color)}"'),
     ])
-    # kitty: cursor only. kitty auto-reloads kitty.conf on change; SIGUSR1 is
+    # kitty: the cursor, and text selection (accent fill, on_accent text, as
+    # GTK and Qt draw it). kitty auto-reloads kitty.conf on change; SIGUSR1 is
     # its documented reload, sent too in case the watcher misses os.replace().
     rewrite("~/.config/kitty/kitty.conf", [
         (r"^cursor[ \t]+#[0-9a-fA-F]{6}[ \t]*$", f"cursor                  #{hex_color}"),
+        (r"^selection_background[ \t]+#[0-9a-fA-F]{6}[ \t]*$", f"selection_background    #{hex_color}"),
+        (r"^selection_foreground[ \t]+#[0-9a-fA-F]{6}[ \t]*$", f"selection_foreground    #{fg}"),
     ])
     kitty_pids = subprocess.run(["pgrep", "-u", str(os.getuid()), "-x", "kitty"],
                                 capture_output=True, text=True).stdout.split()

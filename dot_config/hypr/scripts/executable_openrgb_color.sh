@@ -73,6 +73,19 @@ fi
 # before the wait, so that colour reached the LEDs ~200ms ahead of the accent.
 [ "$(cat "$state.want" 2>/dev/null)" = "$hex" ] || exit 0   # superseded
 
+# Screen colour -> LED colour. A hex value is sRGB, gamma-encoded: 0x83 is ~23%
+# light on a monitor but ~51% PWM on an LED, so the minor channels of an accent
+# glow far too bright and wash it towards white (#ba83e0 read as pale lilac).
+# Decode to linear light, then scale the brightest channel back to 255 so the
+# LEDs keep full brightness. Hue is preserved; greys stay neutral (Platinum ->
+# white). The latest-wins checks above compare the requested screen hex.
+LED_GAMMA=2.6
+hex=$(awk -v h="$hex" -v g="$LED_GAMMA" 'BEGIN {
+    for (i = 0; i < 3; i++) { c[i] = (strtonum("0x" substr(h, 2*i + 1, 2)) / 255) ^ g; if (c[i] > m) m = c[i] }
+    if (m == 0) { print "000000"; exit }
+    printf "%02x%02x%02x\n", c[0]/m*255 + 0.5, c[1]/m*255 + 0.5, c[2]/m*255 + 0.5
+}')
+
 if server_up; then
     base=(openrgb --nodetect)
 else

@@ -72,7 +72,7 @@ Profile keys: `monitors`, `gpu` (PCI addresses, primary first), `env`, `apps`, `
 | `scripts/build_gtk_theme.py` | 169 | By hand, after reinstalling the GTK theme | Rebuilds `~/.themes/Graphite-Dark` GTK 3/4 CSS from pinned upstream Graphite with the accent as runtime `@accent_color` (see `context.md`). Needs `git`, `sassc` |
 | `scripts/awww_transition.sh` | 25 | `SUPER+SHIFT+W`, quickshell WallpaperSelector | Random/explicit wallpaper at monitor refresh rate; calls `sync_border.py` |
 | `scripts/pick_rgb.fish` | 15 | `SUPER+SHIFT+P` | `hyprpicker` → `openrgb_color.sh` |
-| `scripts/openrgb_color.sh` | 111 | `sync_border.py`, `pick_rgb.fish` | Every OpenRGB write. Server fast path (`--nodetect`), Static/Direct per device, `flock` + latest-wins (lock held 150ms, not the CLI's 1s idle), waits out server detection at login |
+| `scripts/openrgb_color.sh` | 124 | `sync_border.py`, `pick_rgb.fish` | Every OpenRGB write. Server fast path (`--nodetect`), sRGB→linear gamma for LEDs, Static/Direct per device, `flock` + latest-wins (lock held 150ms, not the CLI's 1s idle), waits out server detection at login |
 | `scripts/showcase.sh` | — | `SUPER+Print` | Lives in the **chezmoi source tree**, not here — resolved via `chezmoi source-path` |
 
 ## Systemd units

@@ -26,3 +26,27 @@ if py ~= "" then vim.g.python3_host_prog = py end
 vim.g.loaded_node_provider = 0
 vim.g.loaded_perl_provider = 0
 vim.g.loaded_ruby_provider = 0
+
+-- .tex is LaTeX (Neovim guesses plain TeX for new/ambiguous files).
+vim.g.tex_flavor = "latex"
+
+-- Neovim detects nginx under /etc/nginx, */nginx/*.conf and nginx*.conf. Also
+-- catch project configs like deploy/site.conf by their content; any other .conf
+-- falls through to the built-in detection (conf, confini, hyprlang, kitty...).
+local nginx_block = { "^%s*server%s*{", "^%s*http%s*{", "^%s*upstream%s+%S+%s*{", "^%s*location%s.*{" }
+vim.filetype.add {
+  pattern = {
+    [".*%.conf"] = {
+      function(_, bufnr)
+        for _, line in ipairs(vim.api.nvim_buf_get_lines(bufnr, 0, 200, false)) do
+          for _, pat in ipairs(nginx_block) do
+            if line:find(pat) then
+              return "nginx"
+            end
+          end
+        end
+      end,
+      { priority = 1 },
+    },
+  },
+}

@@ -53,7 +53,7 @@ bind(m .. " + F", hl.dsp.exec_cmd(vars.browser), { description = "Apps: Browser 
 bind(m .. " + C", hl.dsp.exec_cmd(vars.terminal_editor), { description = "Apps: Editor (Neovim)" })     -- kitty -e nvim (NvChad)
 bind(m .. " + O", hl.dsp.exec_cmd(vars.notingApp), { description = "Apps: Notes (Obsidian)" })
 bind(m .. " + D", hl.dsp.exec_cmd(vars.discord), { description = "Apps: Discord" })
-bind(m .. " + U", hl.dsp.exec_cmd(vars.updater), { description = "System: Update system (pacman -Syu)" })              -- CachyOS system updater
+bind(m .. " + U", hl.dsp.exec_cmd(vars.updater), { description = "Apps: Update system (pacman -Syu)" })                -- CachyOS system updater
 -- hl.bind(m .. " + G", hl.dsp.exec_cmd(vars.antigravity))
 if vars.thePlan then   -- nil unless installed (modules/variables.lua)
     bind(m .. " + Y", hl.dsp.exec_cmd(vars.thePlan), { description = "Apps: The Plan" })
@@ -80,11 +80,12 @@ bind(m .. " + J",             hl.dsp.layout("togglesplit"), { description = "Win
 bind("ALT + SHIFT + Return",  hl.dsp.window.fullscreen({ mode = "fullscreen",  action = "toggle" }), { description = "Windows: Fullscreen" })
 bind("ALT + Return",          hl.dsp.window.fullscreen({ mode = "maximized",   action = "toggle" }), { description = "Windows: Maximize" })
 
--- ▓▒░ WINDOW RESIZE (repeating)
-bind(m .. " + SHIFT + right", hl.dsp.window.resize({ x = 30, y = 0, relative = true }),  { repeating = true, description = "Windows: Resize window right" })
-bind(m .. " + SHIFT + left",  hl.dsp.window.resize({ x = -30, y = 0, relative = true }), { repeating = true, description = "Windows: Resize window left" })
-bind(m .. " + SHIFT + up",    hl.dsp.window.resize({ x = 0, y = -30, relative = true }), { repeating = true, description = "Windows: Resize window up" })
-bind(m .. " + SHIFT + down",  hl.dsp.window.resize({ x = 0, y = 30, relative = true }),  { repeating = true, description = "Windows: Resize window down" })
+-- ▓▒░ GROUP TABS — SUPER+SHIFT+↑↓ moves the active tab's position; switching
+-- tabs is SUPER+↑↓ (ARROW NAVIGATION below). SUPER+SHIFT+←→ switched tabs too
+-- until 2026-10-07 and was dropped as a duplicate, so it's free.
+-- (keyboard resize is gone; resize with SUPER+right-drag)
+bind(m .. " + SHIFT + up",    hl.dsp.group.move_window({ forward = false }), { description = "Windows: Move group tab up" })
+bind(m .. " + SHIFT + down",  hl.dsp.group.move_window(),                    { description = "Windows: Move group tab down" })
 
 -- ▓▒░ KEYBOARD LAYOUT SWITCHING
 -- Cycles through input.kb_layout (modules/input.lua, per-host override in hosts/)
@@ -118,11 +119,17 @@ bind(m .. " + Print", hl.dsp.exec_cmd('sh -c \'"$(chezmoi source-path)/scripts/s
 -- Print: Opens the quickshell ScreenshotPanel (Copy / Save / Save & Copy)
 -- (handled by the global_shortcuts bind above)
 
--- ▓▒░ WINDOW FOCUS NAVIGATION
-bind(m .. " + left",  hl.dsp.focus({ direction = "left"  }), { description = "Windows: Focus window left" })
-bind(m .. " + right", hl.dsp.focus({ direction = "right" }), { description = "Windows: Focus window right" })
-bind(m .. " + up",    hl.dsp.focus({ direction = "up"    }), { description = "Windows: Focus window up" })
-bind(m .. " + down",  hl.dsp.focus({ direction = "down"  }), { description = "Windows: Focus window down" })
+-- ▓▒░ ARROW NAVIGATION — ←→ cycles workspaces, ↑↓ cycles tabs in a group
+bind(m .. " + left",  hl.dsp.focus({ workspace = "e-1" }), { description = "Workspaces: Switch workspace left" })
+bind(m .. " + right", hl.dsp.focus({ workspace = "e+1" }), { description = "Workspaces: Switch workspace right" })
+bind(m .. " + up",    hl.dsp.group.prev(),                 { description = "Windows: Switch group tab up" })
+bind(m .. " + down",  hl.dsp.group.next(),                 { description = "Windows: Switch group tab down" })
+
+-- ▓▒░ WINDOW FOCUS NAVIGATION (directional)
+bind(m .. " + ALT + left",  hl.dsp.focus({ direction = "left"  }), { description = "Windows: Focus window left" })
+bind(m .. " + ALT + right", hl.dsp.focus({ direction = "right" }), { description = "Windows: Focus window right" })
+bind(m .. " + ALT + up",    hl.dsp.focus({ direction = "up"    }), { description = "Windows: Focus window up" })
+bind(m .. " + ALT + down",  hl.dsp.focus({ direction = "down"  }), { description = "Windows: Focus window down" })
 
 -- ▓▒░ WORKSPACE SWITCHING & MOVE WINDOW TO WORKSPACE
 for i = 1, 10 do
@@ -139,7 +146,7 @@ bind(m .. " + SHIFT + S", hl.dsp.window.move({ workspace = "special:terminal" })
 bind(m .. " + N",         hl.dsp.workspace.toggle_special("notes"), { description = "Workspaces: Scratchpad notes" })
 bind(m .. " + SHIFT + N", hl.dsp.window.move({ workspace = "special:notes" }), { description = "Workspaces: Send window to scratchpad notes" })
 
--- ▓▒░ WORKSPACE CYCLING (scroll wheel + arrow key overrides)
+-- ▓▒░ WORKSPACE CYCLING (scroll wheel)
 bind(m .. " + mouse_down", hl.dsp.focus({ workspace = "e+1" }), { description = "Workspaces: Next workspace (scroll)" })
 bind(m .. " + mouse_up",   hl.dsp.focus({ workspace = "e-1" }), { description = "Workspaces: Previous workspace (scroll)" })
 
@@ -148,27 +155,29 @@ bind(m .. " + mouse:272", hl.dsp.window.drag(),   { mouse = true, description = 
 bind(m .. " + mouse:273", hl.dsp.window.resize(), { mouse = true, description = "Windows: Resize window (drag)" })
 
 -- ▓▒░ MULTIMEDIA & BRIGHTNESS (laptop function keys)
--- NOTE: brightnessctl is NOT installed on hyprcachyos, so the two XF86MonBrightness
---       binds below are inert here. Kept deliberately — they are laptop function
---       keys and this one tree runs on both machines. `pacman -S brightnessctl`
---       on a host that has a backlight. Same for playerctl in the next block.
---       The wpctl binds work: wireplumber is installed.
+-- The wpctl binds work everywhere: wireplumber is installed.
 bind("XF86AudioRaiseVolume",  hl.dsp.exec_cmd("wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%+"), { locked = true, repeating = true, description = "Media: Volume up" })
 bind("XF86AudioLowerVolume",  hl.dsp.exec_cmd("wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"),      { locked = true, repeating = true, description = "Media: Volume down" })
 bind("XF86AudioMute",         hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"),     { locked = true, description = "Media: Mute output" })
 bind("XF86AudioMicMute",      hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"),   { locked = true, description = "Media: Mute microphone" })
-bind("XF86MonBrightnessUp",   hl.dsp.exec_cmd("brightnessctl -e4 -n2 set 5%+"),                  { locked = true, repeating = true, description = "Media: Brightness up" })
-bind("XF86MonBrightnessDown", hl.dsp.exec_cmd("brightnessctl -e4 -n2 set 5%-"),                  { locked = true, repeating = true, description = "Media: Brightness down" })
+-- Brightness only where brightnessctl is installed (a host with a backlight;
+-- hyprcachyos has neither). Like the personal apps in modules/variables.lua:
+-- no bind, and no cheatsheet row, for a key that would silently do nothing.
+local brightnessctl = io.open("/usr/bin/brightnessctl", "r")
+if brightnessctl then
+    brightnessctl:close()
+    bind("XF86MonBrightnessUp",   hl.dsp.exec_cmd("brightnessctl -e4 -n2 set 5%+"), { locked = true, repeating = true, description = "Media: Brightness up" })
+    bind("XF86MonBrightnessDown", hl.dsp.exec_cmd("brightnessctl -e4 -n2 set 5%-"), { locked = true, repeating = true, description = "Media: Brightness down" })
+end
 
 -- ▓▒░ MEDIA CONTROL
--- NOTE: playerctl is NOT installed on hyprcachyos — these four are inert here.
---       Left in place for portability; `pacman -S playerctl` to activate them.
---       quickshell's bar does not shell out to playerctl, so nothing else covers
---       these keys in the meantime.
-bind("XF86AudioNext",  hl.dsp.exec_cmd("playerctl next"),       { locked = true, description = "Media: Next track" })
-bind("XF86AudioPause", hl.dsp.exec_cmd("playerctl play-pause"), { locked = true, description = "Media: Play / pause" })
-bind("XF86AudioPlay",  hl.dsp.exec_cmd("playerctl play-pause"), { locked = true, description = "Media: Play / pause" })
-bind("XF86AudioPrev",  hl.dsp.exec_cmd("playerctl previous"),   { locked = true, description = "Media: Previous track" })
+-- quickshell drives the player over MPRIS (shell.qml, "MEDIA KEYS"), the same
+-- player the bar's media widget shows. These used to run playerctl, which isn't
+-- installed, so the keys did nothing.
+bind("XF86AudioNext",  hl.dsp.global("quickshell:media-next"),       { locked = true, description = "Media: Next track" })
+bind("XF86AudioPause", hl.dsp.global("quickshell:media-play-pause"), { locked = true, description = "Media: Play / pause" })
+bind("XF86AudioPlay",  hl.dsp.global("quickshell:media-play-pause"), { locked = true, description = "Media: Play / pause" })
+bind("XF86AudioPrev",  hl.dsp.global("quickshell:media-previous"),   { locked = true, description = "Media: Previous track" })
 
 -- ▓▒░ WALLPAPER TRANSITION (SUPER + SHIFT + W)
 bind(m .. " + SHIFT + W", hl.dsp.exec_cmd("~/.config/hypr/scripts/awww_transition.sh"), { description = "System: Random wallpaper" })
@@ -188,17 +197,18 @@ bind(m .. " + L", hl.dsp.exec_cmd("loginctl lock-session"),
 --       already locks on. A bind here would be a second, redundant path, and
 --       Switches warns it can conflict with logind's own HandleLidSwitch.
 
--- ▓▒░ WINDOW MOVE (direction) — SUPER+SHIFT+arrows stays resize, unchanged
+-- ▓▒░ WINDOW MOVE (direction) — SUPER+CTRL+arrows (SUPER+SHIFT+↑↓ is group tabs)
 bind(m .. " + CTRL + left",  hl.dsp.window.move({ direction = "l" }), { description = "Windows: Move window left" })
 bind(m .. " + CTRL + right", hl.dsp.window.move({ direction = "r" }), { description = "Windows: Move window right" })
 bind(m .. " + CTRL + up",    hl.dsp.window.move({ direction = "u" }), { description = "Windows: Move window up" })
 bind(m .. " + CTRL + down",  hl.dsp.window.move({ direction = "d" }), { description = "Windows: Move window down" })
 
 -- ▓▒░ MULTI-MONITOR (matters once a laptop is docked)
-bind(m .. " + ALT + left",  hl.dsp.focus({ monitor = "-1" }), { description = "Workspaces: Focus previous monitor" })
-bind(m .. " + ALT + right", hl.dsp.focus({ monitor = "+1" }), { description = "Workspaces: Focus next monitor" })
-bind(m .. " + ALT + SHIFT + left",  hl.dsp.window.move({ monitor = "-1" }), { description = "Workspaces: Move window to previous monitor" })
-bind(m .. " + ALT + SHIFT + right", hl.dsp.window.move({ monitor = "+1" }), { description = "Workspaces: Move window to next monitor" })
+-- (on brackets, not arrows — SUPER+ALT+arrows is directional window focus)
+bind(m .. " + ALT + bracketleft",  hl.dsp.focus({ monitor = "-1" }), { description = "Workspaces: Focus previous monitor" })
+bind(m .. " + ALT + bracketright", hl.dsp.focus({ monitor = "+1" }), { description = "Workspaces: Focus next monitor" })
+bind(m .. " + ALT + SHIFT + bracketleft",  hl.dsp.window.move({ monitor = "-1" }), { description = "Workspaces: Move window to previous monitor" })
+bind(m .. " + ALT + SHIFT + bracketright", hl.dsp.window.move({ monitor = "+1" }), { description = "Workspaces: Move window to next monitor" })
 
 -- ▓▒░ WORKSPACE CYCLING (keyboard)
 bind(m .. " + bracketleft",  hl.dsp.focus({ workspace = "e-1" }), { description = "Workspaces: Previous workspace" })
