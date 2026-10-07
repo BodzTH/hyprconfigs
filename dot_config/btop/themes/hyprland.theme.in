@@ -1,0 +1,74 @@
+# Hyprland — Graphite black with the wallpaper accent.
+# GENERATED: hyprland.theme is rendered from this file by
+# ~/.config/hypr/scripts/sync_border.py on every accent change (then SIGUSR2
+# to running btops, which reloads it live). Edit this .in, not the .theme.
+#
+#   @ACCENT@        the accent (Hyprland's active border)
+#   @ACCENT_LIGHT@  accent, lighter         @ACCENT_DIM@  accent, darker
+#   @ACCENT2@       accent hue +60° (starship's accent2), grey for grey accents;
+#                   @ACCENT2_LIGHT@ / @ACCENT2_DIM@ as for the accent
+#   @ON_ACCENT@     text on an accent fill (#111111 or #ffffff, as GTK/Qt)
+# Greys and success/warning/error are Graphite's own (see Theme.qml).
+
+# Unused while btop.conf has theme_background = false, which keeps kitty's
+# translucent background showing through.
+theme[main_bg]="#111111"
+
+theme[main_fg]="#e5e5e5"
+theme[title]="#ffffff"
+theme[hi_fg]="@ACCENT@"
+theme[selected_bg]="@ACCENT@"
+theme[selected_fg]="@ON_ACCENT@"
+theme[inactive_fg]="#555555"
+theme[graph_text]="#888888"
+theme[meter_bg]="#2e2e2e"
+theme[proc_misc]="@ACCENT@"
+
+# Box outlines take the accent, as the active window border does.
+theme[cpu_box]="@ACCENT@"
+theme[mem_box]="@ACCENT@"
+theme[net_box]="@ACCENT@"
+theme[proc_box]="@ACCENT@"
+theme[div_line]="#2e2e2e"
+
+# Process box banners and the followed process.
+theme[proc_pause_bg]="#f28b82"
+theme[proc_follow_bg]="@ACCENT@"
+theme[proc_banner_bg]="@ACCENT@"
+theme[proc_banner_fg]="@ON_ACCENT@"
+theme[followed_bg]="@ACCENT@"
+theme[followed_fg]="@ON_ACCENT@"
+
+# Load graphs (cpu, gpu, per-process) ramp up through the accent.
+theme[cpu_start]="@ACCENT_DIM@"
+theme[cpu_mid]="@ACCENT@"
+theme[cpu_end]="@ACCENT_LIGHT@"
+theme[process_start]="@ACCENT_DIM@"
+theme[process_mid]="@ACCENT@"
+theme[process_end]="@ACCENT_LIGHT@"
+
+# Things that should alarm keep their meaning: success → warning → error.
+theme[temp_start]="#81c995"
+theme[temp_mid]="#fdd633"
+theme[temp_end]="#f28b82"
+theme[used_start]="#81c995"
+theme[used_mid]="#fdd633"
+theme[used_end]="#f28b82"
+
+theme[available_start]="@ACCENT_DIM@"
+theme[available_mid]="@ACCENT@"
+theme[available_end]="@ACCENT_LIGHT@"
+theme[cached_start]="#555555"
+theme[cached_mid]="#888888"
+theme[cached_end]="#bbbbbb"
+theme[free_start]="#555555"
+theme[free_mid]="#888888"
+theme[free_end]="#e5e5e5"
+
+# Network: download in the accent, upload in its companion.
+theme[download_start]="@ACCENT_DIM@"
+theme[download_mid]="@ACCENT@"
+theme[download_end]="@ACCENT_LIGHT@"
+theme[upload_start]="@ACCENT2_DIM@"
+theme[upload_mid]="@ACCENT2@"
+theme[upload_end]="@ACCENT2_LIGHT@"

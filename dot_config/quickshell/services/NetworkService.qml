@@ -281,7 +281,7 @@ Singleton {
             var ok = code === 0;
             net.vpnResult(vpnName, ok, ok ? "" : (vpnActionErr.text.trim() || vpnActionOut.text.trim()));
             // Success is visible on the switch; only a failure is worth a popup.
-            if (!ok) net.notify("network-vpn-disconnected", "VPN " + vpnName + " failed",
+            if (!ok) net.notify("network-error", "VPN " + vpnName + " failed",
                                 vpnActionErr.text.trim().split("\n").pop() || "");
             net.refreshVpns();
         }

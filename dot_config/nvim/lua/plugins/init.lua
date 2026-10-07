@@ -56,14 +56,20 @@ return {
       vim.opt.rtp:append(plugin.dir .. "/runtime")
     end,
     opts = {
+      -- Only grammars from the tree-sitter org or reputable maintainers. nginx,
+      -- latex, hyprlang, kitty, ini, fish, qml... have community grammars only,
+      -- so they use Neovim's built-in syntax files instead.
       ensure_installed = {
         "vim", "vimdoc", "query",
         "lua", "luadoc",
-        "json", "jsonc", "yaml", "toml",
-        "markdown", "markdown_inline",
-        "bash", "diff", "gitcommit",
         "python",
-        "qmljs", "fish",
+        "go",
+        "rust",
+        "html", "css", "json",
+        "yaml", "toml",
+        "markdown", "markdown_inline",
+        "bibtex",
+        "bash", "diff", "gitcommit",
       },
     },
   },

@@ -6,6 +6,7 @@ import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Hyprland
 import qs
+import qs.services
 
 // Window overview — SUPER+grave. Every workspace as a scaled tile with live
 // thumbnails of its windows. Click a window to focus it, click empty tile
@@ -81,10 +82,10 @@ PanelWindow {
         return Hyprland.toplevels.values.find(t => t.address === addr) || null;
     }
 
+    // Same icons as the taskbar (services/AppIconService.qml): a terminal
+    // shows the program running in it.
     function iconFor(c) {
-        var entry = DesktopEntries.heuristicLookup(c.class || "");
-        if (entry && entry.icon) return entry.icon.startsWith("/") ? entry.icon : "image://icon/" + entry.icon;
-        return Quickshell.hasThemeIcon(c.class) ? "image://icon/" + c.class : "";
+        return AppIconService.iconSource(c.class || "", AppIconService.titleKey(c.title), c.pid || 0);
     }
 
     Process {
@@ -97,6 +98,9 @@ PanelWindow {
                     overview.monitors = JSON.parse(parts[0]);
                     overview.clients = JSON.parse(parts[1])
                         .filter(c => c.mapped && !c.hidden && c.workspace && c.workspace.id > 0);
+                    overview.clients.forEach(c => {
+                        if (AppIconService.isTerminal(c.class)) AppIconService.watch(c.pid);
+                    });
                 } catch (e) {
                     console.warn("Overview: could not parse hyprctl output:", e);
                     return;

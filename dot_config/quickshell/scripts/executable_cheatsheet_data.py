@@ -16,6 +16,7 @@ Sources, all read live so the sheet never drifts from the real config:
   Yazi      the built-in [mgr] keymap, parsed out of the yazi binary (the
             preset is embedded, not shipped as a file), with your keymap.toml
             prepends layered on top. Cached per yazi binary + keymap.toml.
+  Kitty     a few of kitty's default keys, hand-listed like Panels.
 """
 
 import json
@@ -41,6 +42,7 @@ CATEGORIES = [
     {"id": "System",     "icon": "󰒓"},
     {"id": "Neovim",     "icon": "\uf36f"},   # nf-linux-neovim (escaped: the literal glyph was lost once)
     {"id": "Yazi",       "icon": "󰉋"},
+    {"id": "Kitty",      "icon": "\U000f011b"},   # nf-md-cat (escaped, as Neovim's)
 ]
 
 # ▓▒░ HYPRLAND ────────────────────────────────────────────────────────────────
@@ -183,6 +185,30 @@ def panel_rows():
         for title, keys in entries:
             rows.append({"cat": "Panels", "group": f"Inside: {panel}", "title": title,
                          "subtitle": "", "keys": keys, "run": None})
+    return rows
+
+
+# ▓▒░ KITTY ──────────────────────────────────────────────────────────────────
+# kitty's own defaults (kitty.conf doesn't remap them), hand-listed: checked
+# against /usr/lib/kitty/kitty/options/definition.py. "Open" goes through
+# xdg-open, so ~/.config/mimeapps.list decides the app (folders → yazi).
+# Each entry: title, one chip per key-sequence step, kitty map syntax to copy.
+
+KITTY_KEYS = [
+    ("Open what's on screen", [
+        ("Open a path shown on screen", ["CTRL+SHIFT+P", "SHIFT+F"], "ctrl+shift+p>shift+f"),
+        ("Insert a path shown on screen", ["CTRL+SHIFT+P", "F"], "ctrl+shift+p>f"),
+        ("Open a URL shown on screen", ["CTRL+SHIFT+E"], "ctrl+shift+e"),
+    ]),
+]
+
+
+def kitty_rows():
+    rows = []
+    for group, entries in KITTY_KEYS:
+        for title, keys, copy in entries:
+            rows.append({"cat": "Kitty", "group": group, "title": title,
+                         "subtitle": "", "keys": keys, "run": None, "copy": copy})
     return rows
 
 
@@ -363,7 +389,7 @@ def yazi_stamp():
 
 
 def main():
-    rows = hyprland_rows() + panel_rows()
+    rows = hyprland_rows() + panel_rows() + kitty_rows()
     rows += cached("nvim", str(newest_mtime(NVIM_DIR)), build_nvim)
     rows += cached("yazi", yazi_stamp(), build_yazi)
     json.dump({"categories": CATEGORIES, "rows": rows}, sys.stdout, ensure_ascii=False)

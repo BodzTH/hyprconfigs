@@ -9,7 +9,7 @@
 -- https://wiki.hypr.land/Configuring/Start/
 --
 -- Stack: kitty · yazi · quickshell · awww · neovim (NvChad)
--- Theme: HyprBlur (monochrome) + catppuccin-mocha-dark-cursors
+-- Theme: HyprBlur (monochrome) + catppuccin-mocha-light-cursors
 -- ═══════════════════════════════════════════════════════════════
 
 -- ▓▒░ MODULE LOAD ORDER

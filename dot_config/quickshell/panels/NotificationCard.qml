@@ -3,6 +3,7 @@ import QtQuick.Layouts
 import Quickshell
 import Quickshell.Services.Notifications
 import qs
+import qs.services
 
 // One notification, drawn the same way in the popup stack (NotificationOSD)
 // and in the history list (NotificationCenter), so a fix to one is a fix to both.
@@ -46,27 +47,14 @@ Rectangle {
         return new RegExp("\\b" + key + "\\b").test(str);
     }
 
+    // Inline image, Clawd for Claude Code, or the sender's themed icon:
+    // services/AppIconService.qml, shared with the taskbar.
     function iconSource() {
-        var n = card.notification;
-        if (!n) return "";
-        // An inline image (avatar, album art, screenshot) beats the app icon.
-        if (n.image) return n.image;
-        var iconStr = n.appIcon;
-        if (iconStr) {
-            if (iconStr.startsWith("/") || iconStr.startsWith("file://")) return iconStr;
-            if (Quickshell.hasThemeIcon(iconStr)) return "image://icon/" + iconStr;
-        }
-        // Fall back to the sender's real desktop entry (recovers a correct
-        // icon for e.g. notify-send, which reports no usable icon name).
-        var entry = DesktopEntries.heuristicLookup(n.desktopEntry || n.appName || "");
-        if (entry && entry.icon) {
-            return entry.icon.startsWith("/") ? entry.icon : "image://icon/" + entry.icon;
-        }
-        return "";
+        return AppIconService.notificationSource(card.notification);
     }
 
     function appDisplayName() {
-        var name = card.notification ? card.notification.appName : "";
+        var name = AppIconService.notificationAppName(card.notification);
         if (!name) return "Notification";
         if (name.toLowerCase() === "notify-send") return "Terminal · notify-send";
         return name;

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Sync the Hyprland active border and group tabs (and hyprlock, hyprtoolkit, quickshell, GTK,
-Qt/Kvantum, yazi, neovim, starship, kitty cursor and OpenRGB accents) to the most harmonious
+Qt/Kvantum, yazi, neovim, starship, kitty cursor/selection, btop, mpv and OpenRGB accents) to the most harmonious
 color in the current wallpaper. Greyscale or near-black wallpapers fall back
 to Platinum.
 
@@ -203,7 +203,7 @@ def render(template, path, tokens):
 
 def apply(hex_color):
     """Push the color to Hyprland, hyprlock, hyprtoolkit, quickshell, GTK, Qt,
-    yazi, neovim, starship, kitty and OpenRGB."""
+    yazi, neovim, starship, kitty, btop, mpv and OpenRGB."""
     # LEDs first, fire-and-forget: openrgb_color.sh owns every OpenRGB detail
     # (SDK server fast path, Static/Direct per device, latest-wins locking).
     # Own session so it isn't tied to this short-lived process.
@@ -279,10 +279,13 @@ def apply(hex_color):
         (r'^accent[ \t]*=[ \t]*"#[0-9a-fA-F]{6}"[ \t]*$', f'accent = "#{hex_color}"'),
         (r'^accent2[ \t]*=[ \t]*"#[0-9a-fA-F]{6}"[ \t]*$', f'accent2 = "#{companion(hex_color)}"'),
     ])
-    # kitty: cursor only. kitty auto-reloads kitty.conf on change; SIGUSR1 is
+    # kitty: the cursor, and text selection (accent fill, on_accent text, as
+    # GTK and Qt draw it). kitty auto-reloads kitty.conf on change; SIGUSR1 is
     # its documented reload, sent too in case the watcher misses os.replace().
     rewrite("~/.config/kitty/kitty.conf", [
         (r"^cursor[ \t]+#[0-9a-fA-F]{6}[ \t]*$", f"cursor                  #{hex_color}"),
+        (r"^selection_background[ \t]+#[0-9a-fA-F]{6}[ \t]*$", f"selection_background    #{hex_color}"),
+        (r"^selection_foreground[ \t]+#[0-9a-fA-F]{6}[ \t]*$", f"selection_foreground    #{fg}"),
     ])
     kitty_pids = subprocess.run(["pgrep", "-u", str(os.getuid()), "-x", "kitty"],
                                 capture_output=True, text=True).stdout.split()
@@ -291,6 +294,38 @@ def apply(hex_color):
             os.kill(int(pid), signal.SIGUSR1)
         except (OSError, ValueError):
             pass
+    # btop: hyprland.theme is rendered from its .in template (edit the .in).
+    # SIGUSR2 makes btop re-read its config and theme, so running ones follow.
+    accent2 = companion(hex_color)
+    render("~/.config/btop/themes/hyprland.theme.in", "~/.config/btop/themes/hyprland.theme", {
+        "ACCENT": f"#{hex_color}",
+        "ACCENT_LIGHT": f"#{shift_lightness(hex_color, 0.12)}",
+        "ACCENT_DIM": f"#{shift_lightness(hex_color, -0.25)}",
+        "ACCENT2": f"#{accent2}",
+        "ACCENT2_LIGHT": f"#{shift_lightness(accent2, 0.12)}",
+        "ACCENT2_DIM": f"#{shift_lightness(accent2, -0.25)}",
+        "ON_ACCENT": f"#{fg}",
+    })
+    btop_pids = subprocess.run(["pgrep", "-u", str(os.getuid()), "-x", "btop"],
+                               capture_output=True, text=True).stdout.split()
+    for pid in btop_pids:
+        try:
+            os.kill(int(pid), signal.SIGUSR2)
+        except (OSError, ValueError):
+            pass
+    # mpv: accent lines matched by key. Script-opt values are quoted because
+    # mpv.conf would read an unquoted '#' as a comment. stats takes BBGGRR.
+    # mpv only reads its config at start, so running players keep their colours.
+    bgr = hex_color[4:6] + hex_color[2:4] + hex_color[0:2]
+    rewrite("~/.config/mpv/mpv.conf", [
+        (r"^osd-selected-color=.*$", f"osd-selected-color='#{hex_color}'"),
+        *[(rf"^script-opts-append='osc-{key}=#[0-9a-fA-F]{{6}}'$", f"script-opts-append='osc-{key}=#{value}'")
+          for key, value in (("timecode_color", hex_color), ("held_element_color", shift_lightness(hex_color, 0.12)))],
+        *[(rf"^script-opts-append='console-{key}=#[0-9a-fA-F]{{6}}'$", f"script-opts-append='console-{key}=#{value}'")
+          for key, value in (("focused_back_color", hex_color), ("focused_color", fg),
+                             ("match_color", accent2))],
+        (r"^script-opts-append=stats-plot_color=[0-9a-fA-F]{6}$", f"script-opts-append=stats-plot_color={bgr}"),
+    ])
     # yazi: only lines tagged `# accent: fg|bg` in theme.toml, and only that key
     # on each, so the #111111 text on accent badges stays dark. Yazi can't reload
     # its theme live; new instances get the colour.

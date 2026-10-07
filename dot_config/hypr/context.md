@@ -148,7 +148,9 @@ no replacement locker is accepted.
 `hyprlock.conf`, `hyprtoolkit.conf`, the GTK 3/4 stylesheets, Qt's Kvantum theme and qt6ct
 stylesheet, yazi's `theme.toml`
 (only lines tagged `# accent: fg|bg`), `starship.toml`'s palette `accent`/`accent2`, kitty's
-`cursor` (then `SIGUSR1` to every kitty to reload), OpenRGB, and the
+`cursor` (then `SIGUSR1` to every kitty to reload), btop's `hyprland.theme` (rendered
+from its `.theme.in`, then `SIGUSR2` to every btop, which reloads it live), mpv's accent lines in
+`mpv.conf` (new players only), OpenRGB, and the
 live border via `hyprctl eval`, and sets quickshell's accent live over IPC
 (`qs ipc call theme setAccent RRGGBB`). Neovim is not rewritten: its `chadrc.lua`
 reads the accent state file into base46's `nord_blue`, and `sync_border.py`
@@ -203,6 +205,11 @@ are serialised with `flock` and latest-wins. The CLI sends at ~33ms, then idles
 the lock only 150ms, so back-to-back changes take ~0.22s each instead of ~1.1s.
 Verified on the hardware by reading controller colours back over the SDK:
 bursts of three changes always left the last colour, never an earlier one.
+
+The helper gamma-corrects every colour before sending it (`LED_GAMMA=2.2`,
+then the brightest channel is scaled to 255). A hex value is gamma-encoded
+sRGB, but LEDs are linear, so sending the screen hex as-is washed the accent
+towards white (`#ba83e0` → pale lilac; now `#a94eff`). Greys stay neutral.
 
 The Skyloong keyboard is **not** OpenRGB's: it has its own vendor software.
 Both Skyloong detectors are off in `~/.config/OpenRGB/OpenRGB.json`
