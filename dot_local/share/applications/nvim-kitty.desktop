@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Neovim (kitty)
+Comment=Edit text in Neovim inside kitty (xdg-open here has no terminal helper for Terminal=true launchers)
+Exec=kitty -e nvim %F
+Icon=nvim
+Terminal=false
+NoDisplay=true
+MimeType=text/plain;text/markdown;text/x-markdown;text/x-python;text/x-shellscript;text/x-csrc;text/x-chdr;text/x-c++src;text/x-c++hdr;text/x-lua;text/x-log;text/csv;text/x-toml;text/x-yaml;application/json;application/toml;application/x-yaml;application/yaml;application/x-shellscript;application/xml;text/xml;application/x-desktop;

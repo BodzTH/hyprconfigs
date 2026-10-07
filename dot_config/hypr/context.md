@@ -148,7 +148,9 @@ no replacement locker is accepted.
 `hyprlock.conf`, `hyprtoolkit.conf`, the GTK 3/4 stylesheets, Qt's Kvantum theme and qt6ct
 stylesheet, yazi's `theme.toml`
 (only lines tagged `# accent: fg|bg`), `starship.toml`'s palette `accent`/`accent2`, kitty's
-`cursor` (then `SIGUSR1` to every kitty to reload), OpenRGB, and the
+`cursor` (then `SIGUSR1` to every kitty to reload), btop's `hyprland.theme` (rendered
+from its `.theme.in`, then `SIGUSR2` to every btop, which reloads it live), mpv's accent lines in
+`mpv.conf` (new players only), OpenRGB, and the
 live border via `hyprctl eval`, and sets quickshell's accent live over IPC
 (`qs ipc call theme setAccent RRGGBB`). Neovim is not rewritten: its `chadrc.lua`
 reads the accent state file into base46's `nord_blue`, and `sync_border.py`

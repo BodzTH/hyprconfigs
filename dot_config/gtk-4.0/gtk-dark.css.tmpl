@@ -25,3 +25,16 @@ button.toggle:checked:not(.flat):not(.suggested-action):not(.destructive-action)
 button.toggle:checked:hover:not(.flat):not(.suggested-action):not(.destructive-action) {
   background-color: alpha(@accent_color, 0.30);
 }
+
+/* Hyprland blur. GTK 4.24 (4.23.3, gtk!10145) creates an ext-background-effect
+ * object for every toplevel and sends a blur region only where the render tree
+ * blurs its backdrop by >= 20px. With no such node the region stays empty, and
+ * Hyprland 0.56.2 then draws no blur behind the window at all, so GTK 4 apps
+ * (ghostty, pavucontrol, ...) showed what was behind them sharp through the
+ * 0.80/0.70 opacity. Opaque regions are not the cause: kitty declares itself
+ * fully opaque and is blurred. This gives every GTK 4 window a backdrop blur,
+ * which GTK hands to Hyprland as a blur region covering the whole window. The
+ * backdrop inside the window is empty, so GTK's own pass changes nothing
+ * visible. Remove once GTK or Hyprland changes how an empty region is treated
+ * (hyprwm/Hyprland#16508, closed as not planned). */
+window { backdrop-filter: blur(20px); }

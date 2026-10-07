@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Yazi (kitty)
+Comment=Open folders in yazi inside kitty — same window class as the SUPER file manager (hypr/modules/variables.lua)
+Exec=kitty --class=org.yazi.fm -e yazi %f
+Icon=system-file-manager
+Terminal=false
+NoDisplay=true
+MimeType=inode/directory;
