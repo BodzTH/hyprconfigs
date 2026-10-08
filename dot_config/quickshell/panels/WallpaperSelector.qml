@@ -151,9 +151,9 @@ PanelWindow {
                 contentItem: Rectangle {
                     implicitWidth: 4
                     radius: 2
-                    // Wallpaper accent (set live by sync_border.py); brighter
-                    // while it is being dragged. Same as the app launcher.
-                    color: parent.pressed ? Qt.lighter(Theme.accent, 1.3) : Theme.accent
+                    // Dim at rest, accent while hovered or dragged (hyprlock
+                    // power-button style: accent only for interaction). Same as the app launcher.
+                    color: parent.hovered || parent.pressed ? Theme.accent : Theme.subtext0
                     Behavior on color { ColorAnimation { duration: 150 } }
                 }
             }
@@ -166,11 +166,14 @@ PanelWindow {
                 required property int index
 
                 Rectangle {
+                    id: tile
                     anchors { fill: parent; margins: 6 }
                     radius: 10
-                    color: gridList.currentIndex === index ? Theme.bgSelection : (itemHover.hovered ? Theme.hoverBg : "transparent")
-                    border.color: gridList.currentIndex === index ? Theme.glassBorder : "transparent"
-                    border.width: 1
+                    // No tile background (hyprlock power-button style): the
+                    // thumbnail gets an accent frame and the name turns accent
+                    // while selected or hovered.
+                    readonly property bool lit: gridList.currentIndex === index || itemHover.hovered
+                    color: "transparent"
                     
                     ColumnLayout {
                         anchors.fill: parent
@@ -192,11 +195,21 @@ PanelWindow {
                                 cache: true
                                 sourceSize: Qt.size(240, 135)
                             }
+
+                            Rectangle {   // the frame, drawn over the image
+                                anchors.fill: parent
+                                radius: parent.radius
+                                color: "transparent"
+                                border.width: 2
+                                border.color: tile.lit ? Theme.accent : "transparent"
+                                Behavior on border.color { ColorAnimation { duration: 120 } }
+                            }
                         }
                         
                         Text {
                             text: modelData.name
-                            color: Theme.text
+                            color: tile.lit ? Theme.accent : Theme.text
+                            Behavior on color { ColorAnimation { duration: 120 } }
                             font.family: Theme.fontMain
                             font.pixelSize: 12
                             Layout.fillWidth: true

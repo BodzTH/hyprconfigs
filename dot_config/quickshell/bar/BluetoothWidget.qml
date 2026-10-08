@@ -48,8 +48,7 @@ BarItem {
                 id: bluetoothIcon
                 anchors.centerIn: parent
                 verticalAlignment: Text.AlignVCenter
-                color: !isEnabled ? Theme.subtext0
-                    : isConnected ? Theme.success : Theme.accent
+                color: bluetoothWidget.tint(isConnected ? Theme.accent : Theme.text)
                 font.family: Theme.fontMain
                 font.pixelSize: 14
                 renderType: Text.NativeRendering
@@ -62,7 +61,7 @@ BarItem {
             id: bluetoothText
             anchors.verticalCenter: parent.verticalCenter
             verticalAlignment: Text.AlignVCenter
-            color: !isEnabled ? Theme.subtext0 : Theme.text
+            color: bluetoothWidget.tint(!isEnabled ? Theme.subtext0 : isConnected ? Theme.accent : Theme.text)
             font.family: Theme.fontMain
             font.pixelSize: 10
             font.weight: Font.Bold

@@ -117,7 +117,7 @@ tree, outside this one. Renaming a shortcut here silently breaks it unless the Q
 ## Locking
 
 The locker is named in exactly one place: `hypridle.conf`'s `general:lock_cmd`.
-Everything else — sleep, the idle timer, SUPER+L — emits `loginctl lock-session`,
+Everything else — sleep, the idle timer, the power menu's lock button — emits `loginctl lock-session`,
 and hypridle runs `lock_cmd` in response.
 
 Do not call `hyprlock` directly from a keybind or listener. It duplicates the
@@ -141,6 +141,37 @@ crashes, the session stays locked behind Hyprland's "lockscreen app died" screen
 recover from a TTY with
 `hyprctl --instance 0 dispatch 'hl.dsp.exec_cmd("hyprlock")'`. Without that option
 no replacement locker is accepted.
+
+### Power buttons
+
+Sleep / reboot / shutdown sit bottom-centre: bare `$text` glyphs, accent when
+hovered or keyboard-selected. hyprlock (0.9.6) has `onclick` but **no hover state
+and no keybinds**, so `scripts/lock_buttons.py` fakes both. Each button label is
+`cmd[update:0:1]`; a watcher (started by the first label, one per hyprlock, exits
+with it) polls the cursor over Hyprland's socket, takes key commands on a datagram
+socket, and sends hyprlock `SIGUSR2` only when the lit buttons change. Nothing
+forks while idle. hyprlock lays widgets out in **physical pixels** while the
+cursor is logical, so the watcher converts by monitor scale. The actions live in
+the script's `BUTTONS` (onclick calls `lock_buttons.py run NAME`); moving a button
+means editing both the `label` block and the script's offsets/`BOTTOM`.
+`hide_cursor` is `false` for these.
+
+Keyboard: ←/→ select, Enter fires, Esc or any other key drops the selection.
+Those keys can't be global binds, so they live in two submaps at the end of
+`modules/keybindings.lua` that only exist while hyprlock runs: the watcher enters
+`lockscreen` (arrows) and switches to `lockscreen-armed` (arrows, Enter, Esc)
+only while an arrow-key selection exists, so Enter otherwise submits the
+password. A *hovered* button is never armed. Things that bit during the build
+(0.56.2):
+- A submap hides every non-universal bind, so `bind()` makes every `locked`
+  bind `submap_universal` (SUPER+K and the media keys keep working).
+- The catch-all fires for bound keys too, so the armed one skips keys
+  `hl.is_key_down()` reports — which wants keysym case: `"Right"`, not `"right"`.
+- A config reload while locked wipes the Lua `lockbuttons.pid` but keeps the
+  submap; the first key re-finds hyprlock with `pidof`.
+- If the watcher dies without resetting, the catch-all sees no hyprlock on the
+  next key and resets the submap.
+The bar's submap badge ignores `lockscreen*` (the bar shows through the lock).
 
 ## Runtime border color
 

@@ -37,18 +37,18 @@ BarItem {
             id: micIcon
             anchors.verticalCenter: parent.verticalCenter
             verticalAlignment: Text.AlignVCenter
-            color: isMuted ? Theme.error : Theme.accent
+            color: micWidget.tint(isMuted ? Theme.error : Theme.accent)
             font.family: Theme.fontMain
             font.pixelSize: 14
             renderType: Text.NativeRendering
-            text: isMuted ? "󰍭" : "󰍬"
+            text: isMuted ? "󰍭" : "󰍮"
         }
 
         Text {
             id: micText
             anchors.verticalCenter: parent.verticalCenter
             verticalAlignment: Text.AlignVCenter
-            color: isMuted ? Theme.error : Theme.text
+            color: micWidget.tint(isMuted ? Theme.error : Theme.accent)
             font.family: Theme.fontMain
             font.pixelSize: 10
             font.weight: Font.Bold

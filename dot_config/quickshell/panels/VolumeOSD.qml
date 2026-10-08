@@ -94,9 +94,9 @@ Scope {
                     anchors.verticalCenter: parent.verticalCenter
                     width: 22
                     text: {
-                        if (osd.kind === "source") return osdWindow.muted || osdWindow.level === 0 ? "󰍭" : "󰍬";
-                        if (osdWindow.muted || osdWindow.level === 0) return "󰖁";
-                        return osdWindow.level >= 0.5 ? "󰕾" : "󰖀";
+                        if (osd.kind === "source") return osdWindow.muted || osdWindow.level === 0 ? "󰍭" : "󰍮";
+                        if (osdWindow.muted || osdWindow.level === 0) return "";
+                        return osdWindow.level >= 0.5 ? "" : "";
                     }
                     color: osdWindow.muted ? Theme.subtext0 : Theme.text
                     font.family: Theme.fontMain

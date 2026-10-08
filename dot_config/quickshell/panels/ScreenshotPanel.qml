@@ -213,7 +213,7 @@ Item {
 
                 // ── Save to File ──
                 MenuListItem {
-                    iconText: "󰆓"
+                    iconText: "󰠘"
                     labelText: "Save"
                     isSelected: screenshotOverlay.selectedIndex === 1
                     itemIndex: 1

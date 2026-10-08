@@ -14,8 +14,8 @@ BarItem {
 
     Text {
         anchors.centerIn: parent
-        text: "󰌌"
-        color: Theme.text
+        text: "󰥻"
+        color: cheatBtn.tint(Theme.text)
         font.family: Theme.fontMain
         font.pixelSize: 14
     }

@@ -34,6 +34,15 @@ hl.layer_rule({
     blur  = true,
     blur_popups = true,
     ignore_alpha = 0.01,
+    -- xray keeps Hyprland's cached wallpaper blur fresh. A closing layer's
+    -- fade-out is drawn from that cache, and the cache only re-renders while
+    -- something on screen uses it — normally the windows. On an empty
+    -- workspace nothing did, so after a wallpaper change the closing launcher
+    -- (and every other panel) flashed the PREVIOUS wallpaper's blur. The bar
+    -- is always on screen and has nothing but wallpaper behind it (its
+    -- exclusive zone keeps windows out), so xray here changes nothing visible
+    -- and keeps the cache current (2026-10-09).
+    xray = true,
 })
 
 hl.layer_rule({

@@ -22,7 +22,8 @@ import qs
 // its own ("◐ <task>").
 //
 // Browsers are the one place the page title is read (Bodz asked for it,
-// 2026-10-07): a window whose active tab is claude.ai shows the Claude icon.
+// 2026-10-07): a Firefox window shows its active tab's favicon, the icon
+// Firefox itself draws on the tab, found by scripts/firefox_favicon.py.
 QtObject {
     id: self
 
@@ -45,18 +46,8 @@ QtObject {
         { key: "cachy", icon: "pacman" },          // drawn (pacmanSource)
     ]
 
-    // Browser windows whose active tab is one of these pages take its icon.
-    // Matched on the page title with the browser's own suffix removed;
-    // claude.ai titles a page "Claude" or "<chat> - Claude", and Claude Code
-    // on the web "Claude Code".
+    // Browser windows show their active tab's favicon (browserPageIcon).
     readonly property var browserAppIds: ["firefox"]
-    readonly property var browserPages: [
-        // The theme's claude icon is the spark on a dark round badge; this is
-        // the spark alone (icons/claude-spark.svg), as Bodz asked. Bump ?v=
-        // after editing the SVG: quickshell caches images by URL for its whole
-        // run, through config reloads.
-        { title: /(^|\s[-–—|·]\s)Claude( Code)?$/, icon: Quickshell.shellDir + "/icons/claude-spark.svg?v=2" },
-    ]
 
     readonly property var terminalAppIds: ["kitty", "foot", "alacritty", "org.wezfurlong.wezterm", "com.mitchellh.ghostty"]
 
@@ -87,10 +78,87 @@ QtObject {
         return browserAppIds.some(b => id.includes(b));
     }
 
+    // The favicon of the page titled `title`, as a file path, or "" for a
+    // page firefox_favicon.py can't place (Firefox's own pages, a private
+    // window, a page with no icon). Each title is looked up once; a page so
+    // new that Firefox hasn't written it to history yet is asked once more.
+    // While a title's first lookup runs it's "pending", and iconSource keeps
+    // the window's previous icon instead of flashing Firefox's.
+    property var pageIcons: ({})          // page title → favicon path
+    property var _pageAsked: ({})         // page title → lookups so far
+    property var _pageAnswered: ({})      // page title → true once first answered
+    property var _pageQueue: ({})
+    // Firefox's own pages: in history under no title, or not at all.
+    readonly property var firefoxPages: ["Mozilla Firefox", "New Tab", "Private Browsing", "Problem loading page", "Server Not Found"]
+
+    function pageTitle(title) {
+        return (title || "").replace(/\s[-–—]\s(Mozilla )?Firefox( Private Browsing)?$/, "");
+    }
+
     function browserPageIcon(title) {
-        const page = (title || "").replace(/\s[-–—]\s(Mozilla )?Firefox$/, "");
-        const match = browserPages.find(p => p.title.test(page));
-        return match ? match.icon : "";
+        const page = pageTitle(title);
+        if (!page || firefoxPages.includes(page)) return "";
+        if (page in pageIcons) return pageIcons[page];
+        if (!(page in _pageAsked)) {
+            _pageAsked[page] = 0;
+            _pageQueue[page] = true;
+            Qt.callLater(() => { if (!pageThrottle.running && !pageProc.running) pageThrottle.start(); });
+        }
+        return "";
+    }
+
+    function pagePending(title) {
+        const page = pageTitle(title);
+        return !!page && !firefoxPages.includes(page) && !(page in pageIcons) && !(page in _pageAnswered);
+    }
+
+    // True for a favicon (drawn smaller: see faviconScale).
+    function isFavicon(source) {
+        return String(source).indexOf("/quickshell/favicons/") >= 0;
+    }
+    // Favicons fill their whole square; the theme's round icons leave the
+    // corners empty, so at the same size a favicon looks bigger.
+    readonly property real faviconScale: 0.8
+
+    property Timer pageThrottle: Timer {
+        id: pageThrottle
+        interval: 20
+        onTriggered: {
+            const pages = Object.keys(self._pageQueue);
+            if (pages.length === 0) return;
+            self._pageQueue = {};
+            pages.forEach(p => self._pageAsked[p]++);
+            pageProc.asked = pages;
+            pageProc.command = [Quickshell.shellDir + "/scripts/firefox_favicon.py"].concat(pages);
+            pageProc.running = true;
+        }
+    }
+
+    property Process pageProc: Process {
+        id: pageProc
+        property var asked: []
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const next = Object.assign({}, self.pageIcons);
+                this.text.split("\n").forEach(line => {
+                    const tab = line.lastIndexOf("\t");
+                    if (tab > 0) next[line.slice(0, tab)] = line.slice(tab + 1);
+                });
+                pageProc.asked.forEach(p => self._pageAnswered[p] = true);
+                // Not in history yet: ask once more.
+                const missed = pageProc.asked.filter(p => !(p in next) && self._pageAsked[p] < 2);
+                missed.forEach(p => self._pageQueue[p] = true);
+                if (missed.length > 0) pageRetry.start();
+                self.pageIcons = next;   // reassigned whole: views re-evaluate
+            }
+        }
+        onRunningChanged: if (!running && Object.keys(self._pageQueue).length > 0 && !pageRetry.running) pageThrottle.start()
+    }
+
+    property Timer pageRetry: Timer {
+        id: pageRetry
+        interval: 1500
+        onTriggered: if (!pageProc.running) pageThrottle.start()
     }
 
     // ▓▒░ PIXEL ICONS — drawn here, in the wallpaper accent, so they follow
@@ -302,8 +370,14 @@ QtObject {
     }
 
     // An image source for the window: a theme icon path, or a file URL.
-    function iconSource(appId, title, pid) {
+    // `shown` is the source the window shows now: kept while its browser
+    // tab's favicon is still being looked up.
+    function iconSource(appId, title, pid, shown) {
         const id = appId ? appId.toLowerCase() : "";
+        if (shown && isBrowser(id)) {
+            browserPageIcon(title);   // starts the lookup
+            if (pagePending(title)) return shown;
+        }
         if (id.includes("antigravity")) {
             return "file://" + Quickshell.env("HOME") + "/Apps/Antigravity/Google-Antigravity-Icon-White.png";
         }

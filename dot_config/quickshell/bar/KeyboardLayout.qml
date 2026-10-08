@@ -22,7 +22,7 @@ BarItem {
         id: layoutText
         anchors.centerIn: parent
         text: layoutWidget.currentLayout
-        color: Theme.subtext0
+        color: layoutWidget.tint(Theme.subtext0)
         
         font.family: Theme.fontMain
         font.pixelSize: 11

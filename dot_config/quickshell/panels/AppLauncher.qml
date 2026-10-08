@@ -204,9 +204,9 @@ PanelWindow {
                     implicitWidth: 4
                     radius: 2
                     antialiasing: true
-                    // Wallpaper accent (set live by sync_border.py); brighter
-                    // while it is being dragged.
-                    color: parent.pressed ? Qt.lighter(Theme.accent, 1.3) : Theme.accent
+                    // Dim at rest, accent while hovered or dragged (hyprlock
+                    // power-button style: accent only for interaction).
+                    color: parent.hovered || parent.pressed ? Theme.accent : Theme.subtext0
                     Behavior on color { ColorAnimation { duration: 150 } }
                 }
                 background: Item {}
@@ -221,13 +221,10 @@ PanelWindow {
                 required property var modelData
                 required property int index
 
-                color: appList.currentIndex === index
-                    ? Theme.bgSelection
-                    : rowHover.hovered ? Theme.hoverBg : "transparent"
-                border.color: appList.currentIndex === index ? Theme.glassBorder : "transparent"
-                border.width: 1
-                Behavior on color { ColorAnimation { duration: 80 } }
-                Behavior on border.color { ColorAnimation { duration: 80 } }
+                // No row background: the name turns accent while selected or
+                // hovered (hyprlock power-button style).
+                readonly property bool lit: appList.currentIndex === index || rowHover.hovered
+                color: "transparent"
 
                 RowLayout {
                     anchors { fill: parent; leftMargin: 12; rightMargin: 12 }
@@ -248,8 +245,8 @@ PanelWindow {
                         // Fallback glyph when icon fails to load
                         Text {
                             anchors.centerIn: parent
-                            text: "󰣆"
-                            color: Theme.subtext0
+                            text: "󰘔"
+                            color: appRow.lit ? Theme.accent : Theme.text
                             font.family: Theme.fontMain
                             font.pixelSize: 20
                             visible: parent.status !== Image.Ready
@@ -263,7 +260,8 @@ PanelWindow {
 
                         Text {
                             text: appRow.modelData.name
-                            color: Theme.text
+                            color: appRow.lit ? Theme.accent : Theme.text
+                            Behavior on color { ColorAnimation { duration: 80 } }
                             font.family: Theme.fontMain
                             font.pixelSize: 13
                             font.weight: Font.Medium

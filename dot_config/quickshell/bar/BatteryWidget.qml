@@ -29,13 +29,13 @@ BarItem {
             id: batteryIcon
             anchors.verticalCenter: parent.verticalCenter
             verticalAlignment: Text.AlignVCenter
-            color: onBat ? Theme.text : Theme.success
+            color: batteryWidget.tint(hasBat && !onBat ? Theme.accent : Theme.text)
             font.family: Theme.fontMain
             font.pixelSize: 14
             renderType: Text.NativeRendering
             text: {
                 if (!hasBat) return "󰂎"
-                return onBat ? "󰁾" : "󰂄"
+                return onBat ? "󰁾" : "󰢟"
             }
         }
 
@@ -43,7 +43,7 @@ BarItem {
             id: batteryText
             anchors.verticalCenter: parent.verticalCenter
             verticalAlignment: Text.AlignVCenter
-            color: Theme.text
+            color: batteryWidget.tint(hasBat && !onBat ? Theme.accent : Theme.text)
             font.family: Theme.fontMain
             font.pixelSize: 10
             font.weight: Font.Bold

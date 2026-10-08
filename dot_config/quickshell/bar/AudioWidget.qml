@@ -37,14 +37,14 @@ BarItem {
             id: volumeIcon
             anchors.verticalCenter: parent.verticalCenter
             verticalAlignment: Text.AlignVCenter
-            color: isMuted ? Theme.error : Theme.accent
+            color: audioWidget.tint(isMuted ? Theme.error : Theme.text)
             font.family: Theme.fontMain
             font.pixelSize: 14
             renderType: Text.NativeRendering
             text: {
-                if (!sink) return "󰖁"
-                if (isMuted) return "󰖁"
-                return volumePct >= 50 ? "󰕾" : "󰖀"
+                if (!sink) return ""
+                if (isMuted) return ""
+                return volumePct >= 50 ? "" : ""
             }
         }
 
@@ -52,7 +52,7 @@ BarItem {
             id: volumeText
             anchors.verticalCenter: parent.verticalCenter
             verticalAlignment: Text.AlignVCenter
-            color: isMuted ? Theme.error : Theme.text
+            color: audioWidget.tint(isMuted ? Theme.error : Theme.text)
             font.family: Theme.fontMain
             font.pixelSize: 10
             font.weight: Font.Bold

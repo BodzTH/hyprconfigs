@@ -86,29 +86,31 @@ PanelWindow {
 
                 // Do Not Disturb switch
                 Rectangle {
+                    id: dndBtn
                     Layout.preferredHeight: 24
                     Layout.preferredWidth: dndRow.implicitWidth + 16
                     radius: 12
                     antialiasing: true
-                    color: DndService.isEnabled ? Theme.accent : (dndHover.hovered ? Theme.hoverBg : "transparent")
-                    border.color: Theme.borderMuted
-                    border.width: 1
-
-                    Behavior on color { ColorAnimation { duration: 150 } }
+                    // No pill (hyprlock power-button style): on = accent text +
+                    // bell-off glyph, off = white + bell; hover lights it accent.
+                    readonly property bool lit: DndService.isEnabled || dndHover.hovered
+                    color: "transparent"
 
                     Row {
                         id: dndRow
                         anchors.centerIn: parent
                         spacing: 5
                         Text {
-                            text: DndService.isEnabled ? "󰂛" : "󰂚"
-                            color: DndService.isEnabled ? Theme.base : Theme.text
+                            text: DndService.isEnabled ? "󰪑" : "󰂜"
+                            color: dndBtn.lit ? Theme.accent : Theme.text
+                            Behavior on color { ColorAnimation { duration: 150 } }
                             font.family: Theme.fontMain
                             font.pixelSize: 12
                         }
                         Text {
                             text: "Do not disturb"
-                            color: DndService.isEnabled ? Theme.base : Theme.text
+                            color: dndBtn.lit ? Theme.accent : Theme.text
+                            Behavior on color { ColorAnimation { duration: 150 } }
                             font.family: Theme.fontMain
                             font.pixelSize: 11
                             font.weight: Font.DemiBold
@@ -125,13 +127,14 @@ PanelWindow {
                     Layout.preferredHeight: 24
                     Layout.preferredWidth: 24
                     radius: 12
-                    color: clearHover.hovered ? Theme.hoverBg : "transparent"
+                    color: "transparent"
                     visible: centerPopup.entries.length > 0
 
                     Text {
                         anchors.centerIn: parent
                         text: "󰎟"
-                        color: Theme.text
+                        color: clearHover.hovered ? Theme.accent : Theme.text
+                        Behavior on color { ColorAnimation { duration: 120 } }
                         font.family: Theme.fontMain
                         font.pixelSize: 14
                     }
@@ -174,7 +177,7 @@ PanelWindow {
 
                 Text {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    text: DndService.isEnabled ? "󰂛" : "󰂜"
+                    text: DndService.isEnabled ? "󰪑" : "󰂜"
                     color: Theme.subtext0
                     font.family: Theme.fontMain
                     font.pixelSize: 28
