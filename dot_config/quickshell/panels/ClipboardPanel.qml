@@ -204,9 +204,9 @@ PanelWindow {
                     implicitWidth: 4
                     radius: 2
                     antialiasing: true
-                    // Wallpaper accent (set live by sync_border.py); brighter
-                    // while it is being dragged. Same as the app launcher.
-                    color: parent.pressed ? Qt.lighter(Theme.accent, 1.3) : Theme.accent
+                    // Dim at rest, accent while hovered or dragged (hyprlock
+                    // power-button style: accent only for interaction). Same as the app launcher.
+                    color: parent.hovered || parent.pressed ? Theme.accent : Theme.subtext0
                     Behavior on color { ColorAnimation { duration: 150 } }
                 }
                 background: Item {}
@@ -221,28 +221,27 @@ PanelWindow {
                 required property var modelData
                 required property int index
 
-                color: itemList.currentIndex === index
-                    ? Theme.bgSelection
-                    : rowHover.hovered ? Theme.hoverBg : "transparent"
-                border.color: itemList.currentIndex === index ? Theme.glassBorder : "transparent"
-                border.width: 1
-                Behavior on color { ColorAnimation { duration: 80 } }
-                Behavior on border.color { ColorAnimation { duration: 80 } }
+                // No row background: icon and text turn accent while selected
+                // or hovered (hyprlock power-button style).
+                readonly property bool lit: itemList.currentIndex === index || rowHover.hovered
+                color: "transparent"
 
                 RowLayout {
                     anchors { fill: parent; leftMargin: 12; rightMargin: 12 }
                     spacing: 12
 
                     Text {
-                        text: "󰅍"
-                        color: Theme.subtext0
+                        text: "󰨸"
+                        color: itemRow.lit ? Theme.accent : Theme.text
+                        Behavior on color { ColorAnimation { duration: 80 } }
                         font.family: Theme.fontMain
                         font.pixelSize: 15
                     }
 
                     Text {
                         text: itemRow.modelData.content
-                        color: Theme.text
+                        color: itemRow.lit ? Theme.accent : Theme.text
+                        Behavior on color { ColorAnimation { duration: 80 } }
                         font.family: Theme.fontMain
                         font.pixelSize: 13
                         Layout.fillWidth: true
@@ -301,8 +300,7 @@ PanelWindow {
                     width: clearText.implicitWidth + 24
                     radius: 6
                     antialiasing: true
-                    color: wipeHover.hovered ? Theme.hoverBg : "transparent"
-                    Behavior on color { ColorAnimation { duration: 120 } }
+                    color: "transparent"   // destructive: hover turns the text red, no fill
 
                     Text {
                         id: clearText

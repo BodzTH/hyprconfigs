@@ -24,8 +24,8 @@ BarItem {
 
         Text {
             anchors.verticalCenter: parent.verticalCenter
-            text: DndService.isEnabled ? "󰂛" : (bellBtn.unread > 0 ? "󰂞" : "󰂚")
-            color: DndService.isEnabled ? Theme.subtext0 : (bellBtn.unread > 0 ? Theme.accent : Theme.text)
+            text: DndService.isEnabled ? "󰪑" : (bellBtn.unread > 0 ? "󰂟" : "󰂜")
+            color: bellBtn.tint(DndService.isEnabled || bellBtn.unread > 0 ? Theme.accent : Theme.text)
             font.family: Theme.fontMain
             font.pixelSize: 14
         }
@@ -34,7 +34,7 @@ BarItem {
             anchors.verticalCenter: parent.verticalCenter
             visible: bellBtn.unread > 0
             text: bellBtn.unread > 99 ? "99+" : bellBtn.unread
-            color: DndService.isEnabled ? Theme.subtext0 : Theme.accent
+            color: bellBtn.tint(DndService.isEnabled || bellBtn.unread > 0 ? Theme.accent : Theme.text)
             font.family: Theme.fontMain
             font.pixelSize: Theme.fontSize
             font.weight: Font.Bold

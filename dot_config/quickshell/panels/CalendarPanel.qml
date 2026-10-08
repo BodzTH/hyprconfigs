@@ -195,13 +195,13 @@ PanelWindow {
                     height: 22
                     radius: 11
                     antialiasing: true
-                    color: prevMouse.hovered ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.18) : "transparent"
-                    Behavior on color { ColorAnimation { duration: 100 } }
+                    color: "transparent"
 
                     Text {
                         anchors.centerIn: parent
                         text: "<"
-                        color: Theme.accent
+                        color: prevMouse.hovered ? Theme.accent : Theme.text
+                        Behavior on color { ColorAnimation { duration: 100 } }
                         font.family: Theme.fontMain
                         font.pixelSize: Theme.fontSize
                         font.weight: Font.Bold
@@ -230,13 +230,13 @@ PanelWindow {
                     height: 22
                     radius: 11
                     antialiasing: true
-                    color: nextMouse.hovered ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.18) : "transparent"
-                    Behavior on color { ColorAnimation { duration: 100 } }
+                    color: "transparent"
 
                     Text {
                         anchors.centerIn: parent
                         text: ">"
-                        color: Theme.accent
+                        color: nextMouse.hovered ? Theme.accent : Theme.text
+                        Behavior on color { ColorAnimation { duration: 100 } }
                         font.family: Theme.fontMain
                         font.pixelSize: Theme.fontSize
                         font.weight: Font.Bold
@@ -297,14 +297,11 @@ PanelWindow {
                         height: calendarPopup.cellSize
                         radius: 8
                         antialiasing: true
-                        // Today: the bar's quiet glass lift (see bar/BarItem) with
-                        // the number in the accent and a small accent dot under
-                        // it — one accent touch, not an accent block. (A solid
-                        // accent disc, then an accent-tinted box, both read too
-                        // heavy.)
-                        color: model.isToday ? Qt.rgba(1, 1, 1, 0.08) : "transparent"
-                        border.color: model.isToday ? Qt.rgba(1, 1, 1, 0.10) : "transparent"
-                        border.width: 1
+                        // Today: the number in the accent with a small accent dot
+                        // under it, no box (hyprlock power-button style, 2026-10-09;
+                        // a solid accent disc, then an accent-tinted box, then a
+                        // glass lift came before).
+                        color: "transparent"
 
                         Text {
                             anchors.centerIn: parent

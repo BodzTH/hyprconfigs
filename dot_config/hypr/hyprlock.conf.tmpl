@@ -17,12 +17,14 @@ $textAlpha   = e5e5e5
 $accentAlpha = {{ template "accent" . }}
 
 $font = CaskaydiaCove Nerd Font Italic
+$iconFont = CaskaydiaCove Nerd Font
 
 # ▓▒░ GENERAL
 # NOTE: no_fade_in, grace, and disable_loading_bar were removed upstream.
 #       Grace period is now passed as the --grace CLI flag (see hypridle.conf).
+# Cursor stays visible: the power buttons below need it.
 general {
-    hide_cursor = true
+    hide_cursor = false
 }
 
 # ▓▒░ BACKGROUND — transparent background with Hyprland session blur
@@ -95,4 +97,44 @@ input-field {
     position         = 0, -120
     halign           = center
     valign           = center
+}
+
+# ▓▒░ POWER BUTTONS — sleep / reboot / shutdown, bottom centre
+# Bare white glyphs, accent on hover or ←/→ selection; Enter fires a selected
+# one. hyprlock has no hover state or keybinds of its own:
+# scripts/lock_buttons.py watches the cursor, takes the keys from a lock-only
+# submap (modules/keybindings.lua), and re-runs these `:1` labels via SIGUSR2.
+# The icons and actions live in its BUTTONS; the x offsets and BOTTOM there
+# must match these positions.
+label {
+    monitor     =
+    text        = cmd[update:0:1] ~/.config/hypr/scripts/lock_buttons.py sleep $accentAlpha
+    font_size   = 26
+    font_family = $iconFont
+    onclick     = ~/.config/hypr/scripts/lock_buttons.py run sleep
+    position    = -100, 60
+    halign      = center
+    valign      = bottom
+}
+
+label {
+    monitor     =
+    text        = cmd[update:0:1] ~/.config/hypr/scripts/lock_buttons.py reboot $accentAlpha
+    font_size   = 26
+    font_family = $iconFont
+    onclick     = ~/.config/hypr/scripts/lock_buttons.py run reboot
+    position    = 0, 60
+    halign      = center
+    valign      = bottom
+}
+
+label {
+    monitor     =
+    text        = cmd[update:0:1] ~/.config/hypr/scripts/lock_buttons.py shutdown $accentAlpha
+    font_size   = 26
+    font_family = $iconFont
+    onclick     = ~/.config/hypr/scripts/lock_buttons.py run shutdown
+    position    = 100, 60
+    halign      = center
+    valign      = bottom
 }

@@ -25,11 +25,11 @@ BarItem {
         Text {
             anchors.verticalCenter: parent.verticalCenter
             verticalAlignment: Text.AlignVCenter
-            color: idleInhibitorWidget.isCaffeineActive ? Theme.accent : Theme.subtext0
+            color: idleInhibitorWidget.tint(idleInhibitorWidget.isCaffeineActive ? Theme.accent : Theme.text)
             font.family: Theme.fontMain
             font.pixelSize: 14
             renderType: Text.NativeRendering
-            text: idleInhibitorWidget.isCaffeineActive ? "󰅶" : "󰛊"
+            text: idleInhibitorWidget.isCaffeineActive ? "󰛊" : "󰾫"
         }
     }
 

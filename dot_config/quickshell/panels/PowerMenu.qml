@@ -132,159 +132,53 @@ PanelWindow {
         Keys.onEscapePressed: powerMenuPopup.visible = false
         Keys.onReturnPressed: {
             powerMenuPopup.visible = false
-            if (selectedIndex === 0)      powerMenuPopup.doLock()
-            else if (selectedIndex === 1) powerMenuPopup.doSuspend()
-            else if (selectedIndex === 2) powerMenuPopup.doLogout()
-            else if (selectedIndex === 3) powerMenuPopup.doReboot()
-            else if (selectedIndex === 4) powerMenuPopup.doPoweroff()
+            buttons.itemAt(selectedIndex).modelData.run()
         }
 
+        // Same style as the hyprlock power buttons (hypr/hyprlock.conf): bare
+        // white outline glyphs, no per-button background, accent when hovered
+        // or keyboard-selected. The moon is the octicon one hyprlock uses — the
+        // Material sleep glyph is filled.
         RowLayout {
             anchors.fill: parent
             anchors.margins: 6
             spacing: 6
 
-            // Lock Button
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                radius: 14
-                antialiasing: true
-                color: (lockMouse.hovered || selectedIndex === 0) ? Theme.borderBase : "transparent"
-                Behavior on color { ColorAnimation { duration: 120 } }
+            Repeater {
+                id: buttons
+                model: [
+                    { icon: String.fromCodePoint(0xf456),  run: () => powerMenuPopup.doLock() },     // lock
+                    { icon: String.fromCodePoint(0xf4ee),  run: () => powerMenuPopup.doSuspend() },  // suspend
+                    { icon: String.fromCodePoint(0xf08b),  run: () => powerMenuPopup.doLogout() },   // logout
+                    { icon: String.fromCodePoint(0xf0709), run: () => powerMenuPopup.doReboot() },   // reboot
+                    { icon: String.fromCodePoint(0xf0425), run: () => powerMenuPopup.doPoweroff() }  // poweroff
+                ]
 
-                Text {
-                    anchors.centerIn: parent
-                    text: "󰌾"
-                    color: Theme.text
-                    font.family: Theme.fontMain
-                    font.pixelSize: 16
-                }
+                delegate: Item {
+                    required property var modelData
+                    required property int index
 
-                HoverHandler {
-                    id: lockMouse
-                    onHoveredChanged: if (hovered) selectedIndex = 0
-                }
-                TapHandler {
-                    onTapped: {
-                        powerMenuPopup.visible = false
-                        powerMenuPopup.doLock()
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: modelData.icon
+                        color: (hover.hovered || selectedIndex === index) ? Theme.accent : Theme.text
+                        Behavior on color { ColorAnimation { duration: 120 } }
+                        font.family: Theme.fontMain
+                        font.pixelSize: 18
                     }
-                }
-            }
 
-            // Suspend Button
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                radius: 14
-                antialiasing: true
-                color: (suspendMouse.hovered || selectedIndex === 1) ? Theme.borderBase : "transparent"
-                Behavior on color { ColorAnimation { duration: 120 } }
-
-                Text {
-                    anchors.centerIn: parent
-                    text: "󰤄"
-                    color: Theme.text
-                    font.family: Theme.fontMain
-                    font.pixelSize: 16
-                }
-
-                HoverHandler {
-                    id: suspendMouse
-                    onHoveredChanged: if (hovered) selectedIndex = 1
-                }
-                TapHandler {
-                    onTapped: {
-                        powerMenuPopup.visible = false
-                        powerMenuPopup.doSuspend()
+                    HoverHandler {
+                        id: hover
+                        onHoveredChanged: if (hovered) selectedIndex = index
                     }
-                }
-            }
-
-            // Logout Button
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                radius: 14
-                antialiasing: true
-                color: (exitMouse.hovered || selectedIndex === 2) ? Theme.borderBase : "transparent"
-                Behavior on color { ColorAnimation { duration: 120 } }
-
-                Text {
-                    anchors.centerIn: parent
-                    text: "󰍃"
-                    color: Theme.text
-                    font.family: Theme.fontMain
-                    font.pixelSize: 16
-                }
-
-                HoverHandler {
-                    id: exitMouse
-                    onHoveredChanged: if (hovered) selectedIndex = 2
-                }
-                TapHandler {
-                    onTapped: {
-                        powerMenuPopup.visible = false
-                        powerMenuPopup.doLogout()
-                    }
-                }
-            }
-
-            // Reboot Button
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                radius: 14
-                antialiasing: true
-                color: (rebootMouse.hovered || selectedIndex === 3) ? Theme.borderBase : "transparent"
-                Behavior on color { ColorAnimation { duration: 120 } }
-
-                Text {
-                    anchors.centerIn: parent
-                    text: "󰜉"
-                    color: Theme.text
-                    font.family: Theme.fontMain
-                    font.pixelSize: 16
-                }
-
-                HoverHandler {
-                    id: rebootMouse
-                    onHoveredChanged: if (hovered) selectedIndex = 3
-                }
-                TapHandler {
-                    onTapped: {
-                        powerMenuPopup.visible = false
-                        powerMenuPopup.doReboot()
-                    }
-                }
-            }
-
-            // Shutdown Button
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                radius: 14
-                antialiasing: true
-                color: (poweroffMouse.hovered || selectedIndex === 4) ? Theme.borderBase : "transparent"
-                Behavior on color { ColorAnimation { duration: 120 } }
-
-                Text {
-                    anchors.centerIn: parent
-                    text: "󰐥"
-                    color: Theme.error
-                    font.family: Theme.fontMain
-                    font.pixelSize: 16
-                }
-
-                HoverHandler {
-                    id: poweroffMouse
-                    onHoveredChanged: if (hovered) selectedIndex = 4
-                }
-                TapHandler {
-                    onTapped: {
-                        powerMenuPopup.visible = false
-                        powerMenuPopup.doPoweroff()
+                    TapHandler {
+                        onTapped: {
+                            powerMenuPopup.visible = false
+                            modelData.run()
+                        }
                     }
                 }
             }

@@ -255,21 +255,11 @@ PanelWindow {
                         radius: 8
                         antialiasing: true
                         opacity: dimmed ? 0.35 : 1
-                        color: isSelected ? Theme.bgSelection : railHover.hovered ? Theme.hoverBg : "transparent"
-                        Behavior on color { ColorAnimation { duration: 80 } }
+                        // No background or stripe: icon and name turn accent while
+                        // selected or hovered (hyprlock power-button style).
+                        readonly property bool lit: isSelected || railHover.hovered
+                        color: "transparent"
                         Behavior on opacity { NumberAnimation { duration: 120 } }
-
-                        // Accent stripe on the selected category
-                        Rectangle {
-                            width: 3
-                            height: parent.height - 14
-                            radius: 1.5
-                            anchors.left: parent.left
-                            anchors.leftMargin: 3
-                            anchors.verticalCenter: parent.verticalCenter
-                            color: Theme.accent
-                            visible: railItem.isSelected
-                        }
 
                         RowLayout {
                             anchors { fill: parent; leftMargin: 14; rightMargin: 10 }
@@ -277,7 +267,8 @@ PanelWindow {
 
                             Text {
                                 text: railItem.modelData.icon
-                                color: railItem.isSelected ? Theme.accent : Theme.text
+                                color: railItem.lit ? Theme.accent : Theme.text
+                                Behavior on color { ColorAnimation { duration: 80 } }
                                 font.family: Theme.fontMain
                                 font.pixelSize: 15
                                 Layout.preferredWidth: 18
@@ -285,7 +276,8 @@ PanelWindow {
                             }
                             Text {
                                 text: railItem.modelData.id
-                                color: Theme.text
+                                color: railItem.lit ? Theme.accent : Theme.text
+                                Behavior on color { ColorAnimation { duration: 80 } }
                                 font.family: Theme.fontMain
                                 font.pixelSize: 13
                                 font.weight: railItem.isSelected ? Font.Bold : Font.Medium
@@ -412,8 +404,8 @@ PanelWindow {
                         implicitWidth: 4
                         radius: 2
                         antialiasing: true
-                        // Wallpaper accent, like the launcher; brighter while dragged.
-                        color: parent.pressed ? Qt.lighter(Theme.accent, 1.3) : Theme.accent
+                        // Dim at rest, accent while hovered or dragged, like the launcher.
+                        color: parent.hovered || parent.pressed ? Theme.accent : Theme.subtext0
                         Behavior on color { ColorAnimation { duration: 150 } }
                     }
                     background: Item {}
@@ -451,23 +443,9 @@ PanelWindow {
                         anchors.fill: parent
                         radius: 10
                         antialiasing: true
-                        color: entry.isSelected ? Theme.bgSelection
-                             : rowHover.hovered ? Theme.hoverBg : "transparent"
-                        border.color: entry.isSelected ? Theme.glassBorder : "transparent"
-                        border.width: 1
-                        Behavior on color { ColorAnimation { duration: 80 } }
-
-                        // Accent stripe on the selected row
-                        Rectangle {
-                            width: 3
-                            height: parent.height - 18
-                            radius: 1.5
-                            anchors.left: parent.left
-                            anchors.leftMargin: 4
-                            anchors.verticalCenter: parent.verticalCenter
-                            color: Theme.accent
-                            visible: entry.isSelected
-                        }
+                        // No background or stripe: the title turns accent while
+                        // selected or hovered (hyprlock power-button style).
+                        color: "transparent"
 
                         RowLayout {
                             anchors { fill: parent; leftMargin: 16; rightMargin: 12 }
@@ -493,7 +471,8 @@ PanelWindow {
 
                                 Text {
                                     text: entry.isHeader ? "" : entry.modelData.title
-                                    color: Theme.text
+                                    color: (entry.isSelected || rowHover.hovered) ? Theme.accent : Theme.text
+                                    Behavior on color { ColorAnimation { duration: 80 } }
                                     font.family: Theme.fontMain
                                     font.pixelSize: 13
                                     font.weight: Font.Medium
@@ -538,19 +517,18 @@ PanelWindow {
                                         width: chipText.implicitWidth + 16
                                         radius: 6
                                         antialiasing: true
-                                        color: entry.isSelected
-                                            ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.16)
-                                            : Qt.rgba(1, 1, 1, 0.06)
+                                        // Keycaps keep their resting look; selection is an
+                                        // accent frame + text, never an accent fill.
+                                        color: Qt.rgba(1, 1, 1, 0.06)
                                         border.color: entry.isSelected ? Theme.accent : Theme.glassBorder
                                         border.width: 1
-                                        Behavior on color { ColorAnimation { duration: 80 } }
                                         Behavior on border.color { ColorAnimation { duration: 80 } }
 
                                         Text {
                                             id: chipText
                                             anchors.centerIn: parent
                                             text: chip.modelData
-                                            color: entry.isSelected ? Qt.lighter(Theme.accent, 1.35) : Theme.text
+                                            color: entry.isSelected ? Theme.accent : Theme.text
                                             font.family: Theme.fontMain
                                             font.pixelSize: 11
                                             font.weight: Font.Bold

@@ -184,7 +184,8 @@ PanelWindow {
         TapHandler { onTapped: if (!toggle.busy) toggle.toggled() }
     }
 
-    // Small round icon button (details / disconnect / forget).
+    // Small icon button (details / disconnect / forget): a bare glyph,
+    // accent on hover (hyprlock power-button style).
     component IconButton: Rectangle {
         id: iconBtn
         property string glyph: ""
@@ -195,15 +196,13 @@ PanelWindow {
         implicitWidth: 26
         implicitHeight: 26
         radius: 13
-        color: btnHover.hovered ? Theme.bgSelection : Qt.rgba(1, 1, 1, 0.05)
-        border.color: Theme.glassBorder
-        border.width: 1
-        Behavior on color { ColorAnimation { duration: 100 } }
+        color: "transparent"
 
         Text {
             anchors.centerIn: parent
             text: iconBtn.glyph
-            color: iconBtn.tint
+            color: btnHover.hovered ? Theme.accent : iconBtn.tint
+            Behavior on color { ColorAnimation { duration: 100 } }
             font.family: Theme.fontMain
             font.pixelSize: 13
         }
@@ -257,7 +256,7 @@ PanelWindow {
             // Show / hide password
             Text {
                 visible: field.secret
-                text: field.revealed ? "󰈉" : "󰈈"
+                text: field.revealed ? "󰛑" : "󰛐"
                 color: Theme.subtext0
                 font.family: Theme.fontMain
                 font.pixelSize: 14
@@ -294,9 +293,10 @@ PanelWindow {
         TapHandler { onTapped: if (pill.enabled_) pill.clicked() }
     }
 
-    // A clickable row: icon badge, title/subtitle, and a right-hand slot.
-    // Focus (keyboard) and hover share the launcher's row look; `active`
-    // tints the icon with the accent (connected / on).
+    // A clickable row: icon, title/subtitle, and a right-hand slot. No row
+    // background, stripe or icon badge (hyprlock power-button style): icon and
+    // title turn accent while hovered or keyboard-focused; `active`
+    // (connected / on) keeps the icon accent.
     component Row_: Rectangle {
         id: row
         property string glyph: ""
@@ -312,45 +312,27 @@ PanelWindow {
         radius: 10
         antialiasing: true
         activeFocusOnTab: true
-        color: activeFocus ? Theme.bgSelection : rowHover.hovered ? Theme.hoverBg : "transparent"
-        border.color: activeFocus ? Theme.glassBorder : "transparent"
-        border.width: 1
-        Behavior on color { ColorAnimation { duration: 80 } }
+        color: "transparent"
 
         readonly property bool hovered: rowHover.hovered
+        readonly property bool lit: activeFocus || hovered
 
         Keys.onReturnPressed: activated()
         Keys.onSpacePressed: activated()
-
-        // Accent stripe on the keyboard-focused row
-        Rectangle {
-            width: 3
-            height: parent.height - 18
-            radius: 1.5
-            anchors.left: parent.left
-            anchors.leftMargin: 4
-            anchors.verticalCenter: parent.verticalCenter
-            color: Theme.accent
-            visible: row.activeFocus
-        }
 
         RowLayout {
             anchors { fill: parent; leftMargin: 12; rightMargin: 10 }
             spacing: 12
 
-            Rectangle {
+            Item {
                 Layout.preferredWidth: 30
                 Layout.preferredHeight: 30
-                radius: 8
-                color: row.active ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.16) : Qt.rgba(1, 1, 1, 0.06)
-                border.color: row.active ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.5) : Theme.glassBorder
-                border.width: 1
-                Behavior on color { ColorAnimation { duration: 160 } }
 
                 Text {
                     anchors.centerIn: parent
                     text: row.glyph
-                    color: row.active ? Theme.accent : Theme.subtext0
+                    color: row.lit || row.active ? Theme.accent : Theme.text
+                    Behavior on color { ColorAnimation { duration: 120 } }
                     font.family: Theme.fontMain
                     font.pixelSize: 15
                 }
@@ -361,7 +343,8 @@ PanelWindow {
                 spacing: 1
                 Text {
                     text: row.title
-                    color: Theme.text
+                    color: row.lit ? Theme.accent : Theme.text
+                    Behavior on color { ColorAnimation { duration: 120 } }
                     font.family: Theme.fontMain
                     font.pixelSize: 13
                     font.weight: Font.Medium
@@ -523,7 +506,7 @@ PanelWindow {
                 contentItem: Rectangle {
                     implicitWidth: 4
                     radius: 2
-                    color: parent.pressed ? Qt.lighter(Theme.accent, 1.3) : Theme.accent
+                    color: parent.hovered || parent.pressed ? Theme.accent : Theme.subtext0
                 }
                 background: Item {}
             }
@@ -609,7 +592,7 @@ PanelWindow {
                 Row_ {
                     id: firstFocus
                     visible: NetworkService.ethernetAvailable
-                    glyph: "󰈀"
+                    glyph: "󰲝"
                     title: "Ethernet"
                     active: NetworkService.ethernetConnected
                     subtitle: !NetworkService.cablePlugged ? "Cable unplugged"
@@ -626,7 +609,7 @@ PanelWindow {
 
                     IconButton {
                         visible: NetworkService.ethernetConnected
-                        glyph: "󰋼"
+                        glyph: "󰋽"
                         tint: panel.detailsFor === "ethernet" ? Theme.accent : Theme.text
                         onClicked: panel.openDetails("ethernet", NetworkService.wiredDevice.name)
                     }
@@ -711,25 +694,25 @@ PanelWindow {
                                     visible: netRow.hovered || netRow.activeFocus
                                     IconButton {
                                         visible: netItem.net.connected
-                                        glyph: "󰋼"
+                                        glyph: "󰋽"
                                         tint: panel.detailsFor === "wifi" ? Theme.accent : Theme.text
                                         onClicked: panel.openDetails("wifi", NetworkService.wifiDevice.name)
                                     }
                                     IconButton {
                                         visible: netItem.net.connected
-                                        glyph: "󰖪"
+                                        glyph: "󰤮"
                                         onClicked: NetworkService.disconnectWifi(netItem.net)
                                     }
                                     IconButton {
                                         visible: netItem.net.known
-                                        glyph: "󰆴"
+                                        glyph: "󰧧"
                                         tint: Theme.error
                                         onClicked: NetworkService.forgetWifi(netItem.net)
                                     }
                                 }
                                 Text {
                                     visible: NetworkService.isSecured(netItem.net) && !(netRow.hovered || netRow.activeFocus)
-                                    text: "󰌾"
+                                    text: ""
                                     color: Theme.subtext0
                                     font.family: Theme.fontMain
                                     font.pixelSize: 12
@@ -820,7 +803,7 @@ PanelWindow {
                 SectionLabel { text: "DNS" }
 
                 Row_ {
-                    glyph: "󰒍"
+                    glyph: ""
                     title: NetworkService.dns.preset === "" ? "Automatic (router)" : NetworkService.dns.preset
                     active: NetworkService.dns.preset !== ""
                     subtitle: NetworkService.dnsBusy ? "Applying…"
@@ -888,10 +871,9 @@ PanelWindow {
                             implicitHeight: 30
                             radius: 8
                             activeFocusOnTab: true
-                            color: current ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.14)
-                                 : dnsHover.hovered || activeFocus ? Theme.hoverBg : "transparent"
-                            border.color: current ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.45) : "transparent"
-                            border.width: 1
+                            // No fill: current, hovered or focused lights the label
+                            // accent; the check mark still marks the current one.
+                            color: "transparent"
 
                             function pick() {
                                 if (NetworkService.dnsBusy || current) return;
@@ -907,7 +889,8 @@ PanelWindow {
                                 spacing: 8
                                 Text {
                                     text: dnsItem.modelData.label
-                                    color: dnsItem.current ? Theme.accent : Theme.text
+                                    color: dnsItem.current || dnsHover.hovered || dnsItem.activeFocus ? Theme.accent : Theme.text
+                                    Behavior on color { ColorAnimation { duration: 100 } }
                                     font.family: Theme.fontMain
                                     font.pixelSize: 12
                                     font.weight: dnsItem.current ? Font.Bold : Font.Normal
@@ -948,7 +931,7 @@ PanelWindow {
                     delegate: Row_ {
                         id: vpnRow
                         required property var modelData
-                        glyph: "󰦝"
+                        glyph: "󰳌"
                         title: modelData.name
                         active: modelData.active
                         subtitle: panel.vpnBusy === modelData.name ? "Working…"
@@ -1001,13 +984,14 @@ PanelWindow {
                             implicitHeight: 30
                             radius: 8
                             activeFocusOnTab: true
-                            color: fileHover.hovered || activeFocus ? Theme.hoverBg : Qt.rgba(1, 1, 1, 0.04)
+                            color: "transparent"
                             Keys.onReturnPressed: NetworkService.importWireguard(modelData)
                             Text {
                                 anchors { fill: parent; leftMargin: 10; rightMargin: 10 }
                                 verticalAlignment: Text.AlignVCenter
-                                text: "󰈮  " + fileRow.modelData.replace(/^.*\//, "")
-                                color: Theme.text
+                                text: "󱀫  " + fileRow.modelData.replace(/^.*\//, "")
+                                color: fileHover.hovered || fileRow.activeFocus ? Theme.accent : Theme.text
+                                Behavior on color { ColorAnimation { duration: 100 } }
                                 font.family: Theme.fontMain
                                 font.pixelSize: 12
                                 elide: Text.ElideMiddle

@@ -37,7 +37,7 @@ modules that need them.
 | `modules/input.lua` | 62 | Keyboard (`us,ara`), touchpad, cursor (gaming VRR lines commented out), gestures, per-device | `hosts` (`.input` overrides, `.devices`) |
 | `modules/layouts.lua` | 71 | Dwindle, `misc` (incl. `font_family`, lock-restore), `binds`, `ecosystem` | — |
 | `modules/autostart.lua` | 90 | Starts/stops `hyprland-session.target`; awww-socket-sequenced wallpaper restore + border sync | — |
-| `modules/keybindings.lua` | 213 | Every bind, via the local `bind()` helper: `Category: Action` descriptions (read by the quickshell cheatsheet) + the global `cheatsheet.actions` registry that lets it run a bind. Largest file | `variables` |
+| `modules/keybindings.lua` | 312 | Every bind, via the local `bind()` helper: `Category: Action` descriptions (read by the quickshell cheatsheet) + the global `cheatsheet.actions` registry that lets it run a bind. `locked` binds are made `submap_universal`. Ends with the `lockscreen`/`lockscreen-armed` submaps + global `lockbuttons` (hyprlock keyboard buttons, see `context.md`). Largest file | `variables` |
 | `modules/windowrules.lua` | 119 | Window/layer/workspace rules, smart gaps, quickshell blur, auth prompts keep focus, clipboard panel hidden from screenshare | — |
 
 **There are exactly these 10 modules.** A consolidation into `session.lua` /
@@ -71,6 +71,7 @@ Profile keys: `monitors`, `gpu` (PCI addresses, primary first), `env`, `apps`, `
 | `scripts/sync_border.py` | 385 | `SUPER+SHIFT+W`, wallpaper change, `config.reloaded`, login | Wallpaper → accent color. **Rewrites** `hyprlock.conf`, `hyprtoolkit.conf`, GTK 3/4 CSS (`accent_color`/`accent_bg_color`/`accent_fg_color`), Kvantum `GraphiteDark.svg` (rendered from `.svg.in`) + `GraphiteDark.kvconfig` highlight/on-accent keys, qt6ct QSS `/* accent */` line, yazi `theme.toml` (`# accent:` lines), `starship.toml` palette `accent`/`accent2`, kitty `cursor` (+ `SIGUSR1`), btop `hyprland.theme` (rendered from `.theme.in`, + `SIGUSR2`), mpv.conf accent lines (by key); OpenRGB (via `openrgb_color.sh`), live border, quickshell accent over IPC, running nvims over RPC (`accent.reload()`). Latest-wins token + lock |
 | `scripts/build_gtk_theme.py` | 169 | By hand, after reinstalling the GTK theme | Rebuilds `~/.themes/Graphite-Dark` GTK 3/4 CSS from pinned upstream Graphite with the accent as runtime `@accent_color` (see `context.md`). Needs `git`, `sassc` |
 | `scripts/awww_transition.sh` | 25 | `SUPER+SHIFT+W`, quickshell WallpaperSelector | Random/explicit wallpaper at monitor refresh rate; calls `sync_border.py` |
+| `scripts/lock_buttons.py` | 263 | hyprlock's three power-button labels (`cmd[update:0:1]`) and `onclick`; the `lockscreen` submap binds | Hover + keyboard for the lock-screen sleep/reboot/shutdown buttons, and their actions. Label mode prints the glyph (accent if lit); a watcher per hyprlock polls the cursor, takes ←/→/Enter/Esc from the submap binds over a datagram socket, switches `lockscreen`/`lockscreen-armed`, and `SIGUSR2`s hyprlock only on change. Offsets must match `hyprlock.conf` |
 | `scripts/pick_rgb.fish` | 15 | `SUPER+SHIFT+P` | `hyprpicker` → `openrgb_color.sh` |
 | `scripts/openrgb_color.sh` | 124 | `sync_border.py`, `pick_rgb.fish` | Every OpenRGB write. Server fast path (`--nodetect`), sRGB→linear gamma for LEDs, Static/Direct per device, `flock` + latest-wins (lock held 150ms, not the CLI's 1s idle), waits out server detection at login |
 | `scripts/showcase.sh` | — | `SUPER+Print` | Lives in the **chezmoi source tree**, not here — resolved via `chezmoi source-path` |
@@ -97,7 +98,7 @@ Package-provided units `bootstrap.sh` also enables: `hypridle.service`,
 | File | L | Notes |
 |---|---:|---|
 | `hypridle.conf` | 50 | 600s lock → 630s blank → 2700s suspend. Sole definition of `lock_cmd` |
-| `hyprlock.conf` | 94 | Lock screen. `$accent` is **rewritten by `sync_border.py`**; chezmoi template (accent + `displayName`) — edit via `chezmoi edit`, `re-add` skips it |
+| `hyprlock.conf` | 137 | Lock screen; power buttons hover via `scripts/lock_buttons.py`. `$accent` is **rewritten by `sync_border.py`**; chezmoi template (accent + `displayName`) — edit via `chezmoi edit`, `re-add` skips it |
 | `hyprtoolkit.conf` | 22 | Toolkit theme tokens. `accent` also rewritten at runtime; chezmoi template like `hyprlock.conf` |
 
 ## External trees this depends on
@@ -127,30 +128,32 @@ Package-provided units `bootstrap.sh` also enables: `hypridle.service`,
 
 | Lines | Group |
 |---|---|
-| 12-48 | BIND HELPER + CHEATSHEET REGISTRY |
-| 49-59 | APPLICATION LAUNCHER BINDINGS |
-| 60-72 | QUICKSHELL PANEL TRIGGERS |
-| 73-80 | WINDOW MANAGEMENT |
-| 81-86 | WINDOW RESIZE (repeating) |
-| 87-90 | KEYBOARD LAYOUT SWITCHING |
-| 91-95 | CLIPBOARD MANAGEMENT |
-| 96-115 | SCREENSHOT BINDINGS |
-| 116-121 | WINDOW FOCUS NAVIGATION |
-| 122-128 | WORKSPACE SWITCHING & MOVE WINDOW TO WORKSPACE |
-| 129-136 | SPECIAL WORKSPACES (SCRATCHPADS) |
-| 137-140 | WORKSPACE CYCLING (scroll wheel + arrow key overrides) |
-| 141-144 | MOUSE BINDINGS — drag and resize windows |
-| 145-157 | MULTIMEDIA & BRIGHTNESS (laptop function keys) |
-| 158-167 | MEDIA CONTROL |
-| 168-170 | WALLPAPER TRANSITION (SUPER + SHIFT + W) |
-| 171-173 | OPENRGB COLOR PICKER (SUPER + SHIFT + P) |
-| 174-185 | SESSION LOCK |
-| 186-191 | WINDOW MOVE (direction) — SUPER+SHIFT+arrows stays resize, unchanged |
-| 192-197 | MULTI-MONITOR (matters once a laptop is docked) |
-| 198-201 | WORKSPACE CYCLING (keyboard) |
-| 202-208 | WINDOW UTILITIES |
-| 209-211 | COLOR PICKER (SUPER + I) — hyprpicker is installed but was unbound |
-| 212-213 | RELOAD CONFIG |
+| 12-52 | BIND HELPER + CHEATSHEET REGISTRY |
+| 53-65 | APPLICATION LAUNCHER BINDINGS |
+| 66-78 | QUICKSHELL PANEL TRIGGERS |
+| 79-86 | WINDOW MANAGEMENT |
+| 87-93 | GROUP TABS — SUPER+SHIFT+↑↓ moves the active tab's position; switching |
+| 94-100 | KEYBOARD LAYOUT SWITCHING |
+| 101-105 | CLIPBOARD MANAGEMENT |
+| 106-125 | SCREENSHOT BINDINGS |
+| 126-131 | ARROW NAVIGATION — ←→ cycles workspaces, ↑↓ cycles tabs in a group |
+| 132-137 | WINDOW FOCUS NAVIGATION (directional) |
+| 138-144 | WORKSPACE SWITCHING & MOVE WINDOW TO WORKSPACE |
+| 145-152 | SPECIAL WORKSPACES (SCRATCHPADS) |
+| 153-156 | WORKSPACE CYCLING (scroll wheel) |
+| 157-160 | MOUSE BINDINGS — drag and resize windows |
+| 161-176 | MULTIMEDIA & BRIGHTNESS (laptop function keys) |
+| 177-185 | MEDIA CONTROL |
+| 186-188 | WALLPAPER TRANSITION (SUPER + SHIFT + W) |
+| 189-191 | OPENRGB COLOR PICKER (SUPER + SHIFT + P) |
+| 192-201 | SESSION LOCK |
+| 202-207 | WINDOW MOVE (direction) — SUPER+CTRL+arrows (SUPER+SHIFT+↑↓ is group tabs) |
+| 208-214 | MULTI-MONITOR (matters once a laptop is docked) |
+| 215-218 | WORKSPACE CYCLING (keyboard) |
+| 219-225 | WINDOW UTILITIES |
+| 226-228 | COLOR PICKER (SUPER + I) — hyprpicker is installed but was unbound |
+| 229-231 | RELOAD CONFIG |
+| 232-312 | LOCK SCREEN POWER BUTTONS (keyboard) |
 
 ## Not config
 

@@ -21,7 +21,7 @@ BarItem {
 
     function icon() {
         if (!NetworkService.ready) return "󰤮";
-        if (NetworkService.type === "ethernet") return "󰈀";
+        if (NetworkService.type === "ethernet") return "󰲝";
         if (NetworkService.type === "wifi") {
             var s = NetworkService.activeWifi ? NetworkService.activeWifi.signalStrength : 0;
             return s > 0.75 ? "󰤨" : s > 0.5 ? "󰤥" : s > 0.25 ? "󰤢" : "󰤟";
@@ -57,7 +57,7 @@ BarItem {
         Text {
             anchors.verticalCenter: parent.verticalCenter
             text: widget.icon()
-            color: NetworkService.type === "none" ? Theme.subtext0 : Theme.text
+            color: widget.tint(Theme.text)
             font.family: Theme.fontMain
             font.pixelSize: 14
         }
@@ -70,8 +70,8 @@ BarItem {
 
             Repeater {
                 model: [
-                    { glyph: "󰇚", active: widget.downActive, value: SysMonitorService.downloadSpeed },
-                    { glyph: "󰕒", active: widget.upActive, value: SysMonitorService.uploadSpeed }
+                    { glyph: "󰮏", active: widget.downActive, value: SysMonitorService.downloadSpeed },
+                    { glyph: "󰸇", active: widget.upActive, value: SysMonitorService.uploadSpeed }
                 ]
 
                 delegate: Row {
@@ -83,7 +83,7 @@ BarItem {
                     Text {
                         anchors.verticalCenter: parent.verticalCenter
                         text: speed.modelData.glyph
-                        color: speed.modelData.active ? Theme.accent : Theme.subtext0
+                        color: widget.tint(speed.modelData.active ? Theme.accent : Theme.subtext0)
                         font.family: Theme.fontMain
                         font.pixelSize: 13
                         Behavior on color { ColorAnimation { duration: 200 } }
@@ -91,7 +91,7 @@ BarItem {
                     Text {
                         anchors.verticalCenter: parent.verticalCenter
                         text: widget.formatSpeed(speed.modelData.value)
-                        color: Theme.text
+                        color: widget.tint(speed.modelData.active ? Theme.accent : Theme.text)
                         font.family: Theme.fontMain
                         font.pixelSize: 11
                         font.weight: Font.Bold

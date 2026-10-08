@@ -17,6 +17,9 @@ BarItem {
 
     property bool showMemGb: true
 
+    // White when idle, accent once it is working (≥ 50%), red when overloaded.
+    function load(pct) { return pct >= 85 ? Theme.error : pct >= 50 ? Theme.accent : Theme.text; }
+
     TapHandler {
         onTapped: {
             // Own scope, not quickshell.service's cgroup — see panels/AppLauncher.qml.
@@ -37,20 +40,16 @@ BarItem {
         Row {
             spacing: 4
 
-            Text {
-                text: ""
-                anchors.verticalCenter: parent.verticalCenter
-                color: SysMonitorService.cpuUsage >= 85 ? Theme.error : Theme.subtext0
-                font.family: Theme.fontMain
-                font.pixelSize: 13
-                renderType: Text.NativeRendering
-                Behavior on color { ColorAnimation { duration: 150 } }
+            StatBadge {
+                label: "CPU"
+                kind: "chip"
+                tone: sysMonitorWidget.tint(sysMonitorWidget.load(SysMonitorService.cpuUsage))
             }
             Text {
                 id: cpuText
                 anchors.verticalCenter: parent.verticalCenter
                 text: SysMonitorService.cpuUsage.toString().padStart(2, '0') + "%"
-                color: SysMonitorService.cpuUsage >= 85 ? Theme.error : Theme.text
+                color: sysMonitorWidget.tint(sysMonitorWidget.load(SysMonitorService.cpuUsage))
                 font.family: Theme.fontMain
                 font.pixelSize: 10
                 font.weight: Font.Bold
@@ -63,20 +62,16 @@ BarItem {
         Row {
             spacing: 4
 
-            Text {
-                text: "󰘚"
-                anchors.verticalCenter: parent.verticalCenter
-                color: SysMonitorService.memUsage >= 85 ? Theme.error : Theme.subtext0
-                font.family: Theme.fontMain
-                font.pixelSize: 13
-                renderType: Text.NativeRendering
-                Behavior on color { ColorAnimation { duration: 150 } }
+            StatBadge {
+                label: "RAM"
+                kind: "ram"
+                tone: sysMonitorWidget.tint(sysMonitorWidget.load(SysMonitorService.memUsage))
             }
             Text {
                 id: memText
                 anchors.verticalCenter: parent.verticalCenter
                 text: sysMonitorWidget.showMemGb ? (SysMonitorService.memUsed || (SysMonitorService.memUsage + "%")) : (SysMonitorService.memUsage.toString().padStart(2, '0') + "%")
-                color: SysMonitorService.memUsage >= 85 ? Theme.error : Theme.text
+                color: sysMonitorWidget.tint(sysMonitorWidget.load(SysMonitorService.memUsage))
                 font.family: Theme.fontMain
                 font.pixelSize: 10
                 font.weight: Font.Bold

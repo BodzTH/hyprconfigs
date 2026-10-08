@@ -66,14 +66,14 @@ Rectangle {
         var str = (card.notification ? card.notification.appName || "" : "").toLowerCase();
         if (["notify-send", "ghostty", "kitty", "alacritty", "foot", "wezterm", "terminal",
              "konsole", "xterm", "bash", "zsh", "python", "node", "cargo", "pacman", "yay",
-             "paru", "git", "make", "gcc"].some(k => hasWord(str, k))) return "󰆍";
+             "paru", "git", "make", "gcc"].some(k => hasWord(str, k))) return "";
         if (["firefox", "chrome", "chromium", "brave", "zen", "edge", "browser", "opera",
              "vivaldi", "safari", "tor"].some(k => hasWord(str, k))) return "󰖟";
         if (["discord", "vesktop", "webcord", "telegram", "signal", "slack", "element",
-             "whatsapp", "matrix", "teams"].some(k => hasWord(str, k))) return "󰭹";
-        if (["spotify", "music", "amberol", "mpv", "vlc", "rhythmbox", "cider"].some(k => hasWord(str, k))) return "󰝚";
-        if (["volume", "pipewire", "mute"].some(k => str.includes(k))) return "󰕾";
-        return "󰵅";
+             "whatsapp", "matrix", "teams"].some(k => hasWord(str, k))) return "󰻞";
+        if (["spotify", "music", "amberol", "mpv", "vlc", "rhythmbox", "cider"].some(k => hasWord(str, k))) return "󰽴";
+        if (["volume", "pipewire", "mute"].some(k => str.includes(k))) return "";
+        return "󰍪";
     }
 
     function timeText() {
@@ -143,7 +143,7 @@ Rectangle {
                 Text {
                     anchors.centerIn: parent
                     text: card.categoryGlyph()
-                    color: Theme.accent
+                    color: Theme.text
                     font.family: Theme.fontMain
                     font.pixelSize: 16
                     visible: !notifImg.visible
@@ -192,12 +192,13 @@ Rectangle {
                         Layout.preferredWidth: 18
                         Layout.preferredHeight: 18
                         radius: 9
-                        color: closeHover.hovered ? Theme.hoverBg : "transparent"
+                        color: "transparent"
 
                         Text {
                             anchors.centerIn: parent
                             text: "󰅖"
-                            color: closeHover.hovered ? Theme.text : Theme.subtext0
+                            color: closeHover.hovered ? Theme.accent : Theme.text
+                            Behavior on color { ColorAnimation { duration: 120 } }
                             font.family: Theme.fontMain
                             font.pixelSize: 12
                         }
@@ -257,15 +258,15 @@ Rectangle {
                     height: 24
                     radius: 12
                     antialiasing: true
-                    color: actionHover.hovered ? Theme.bgSelection : Theme.hoverBg
-                    border.color: Theme.glassBorder
-                    border.width: 1
+                    // Bare text button, accent on hover (hyprlock power-button style).
+                    color: "transparent"
 
                     Text {
                         id: actionText
                         anchors.centerIn: parent
                         text: actionBtn.modelData.text
-                        color: Theme.text
+                        color: actionHover.hovered ? Theme.accent : Theme.text
+                        Behavior on color { ColorAnimation { duration: 120 } }
                         font.family: Theme.fontMain
                         font.pixelSize: 11
                         font.weight: Font.DemiBold

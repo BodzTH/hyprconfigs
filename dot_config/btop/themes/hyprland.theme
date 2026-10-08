@@ -3,11 +3,11 @@
 # ~/.config/hypr/scripts/sync_border.py on every accent change (then SIGUSR2
 # to running btops, which reloads it live). Edit this .in, not the .theme.
 #
-#   #5190c2        the accent (Hyprland's active border)
-#   #7eadd2  accent, lighter         #264e6d  accent, darker
-#   #8351c2       accent hue +60° (starship's accent2), grey for grey accents;
-#                   #a37ed2 / #46266d as for the accent
-#   #ffffff     text on an accent fill (#111111 or #ffffff, as GTK/Qt)
+#   #ba83e0        the accent (Hyprland's active border)
+#   #d5b4ec  accent, lighter         #7e2db6  accent, darker
+#   #e083a9       accent hue +60° (starship's accent2), grey for grey accents;
+#                   #ecb4cb / #b62d65 as for the accent
+#   #111111     text on an accent fill (#111111 or #ffffff, as GTK/Qt)
 # Greys and success/warning/error are Graphite's own (see Theme.qml).
 
 # Unused while btop.conf has theme_background = false, which keeps kitty's
@@ -16,36 +16,36 @@ theme[main_bg]="#111111"
 
 theme[main_fg]="#e5e5e5"
 theme[title]="#ffffff"
-theme[hi_fg]="#5190c2"
-theme[selected_bg]="#5190c2"
-theme[selected_fg]="#ffffff"
+theme[hi_fg]="#ba83e0"
+theme[selected_bg]="#ba83e0"
+theme[selected_fg]="#111111"
 theme[inactive_fg]="#555555"
 theme[graph_text]="#888888"
 theme[meter_bg]="#2e2e2e"
-theme[proc_misc]="#5190c2"
+theme[proc_misc]="#ba83e0"
 
 # Box outlines take the accent, as the active window border does.
-theme[cpu_box]="#5190c2"
-theme[mem_box]="#5190c2"
-theme[net_box]="#5190c2"
-theme[proc_box]="#5190c2"
+theme[cpu_box]="#ba83e0"
+theme[mem_box]="#ba83e0"
+theme[net_box]="#ba83e0"
+theme[proc_box]="#ba83e0"
 theme[div_line]="#2e2e2e"
 
 # Process box banners and the followed process.
 theme[proc_pause_bg]="#f28b82"
-theme[proc_follow_bg]="#5190c2"
-theme[proc_banner_bg]="#5190c2"
-theme[proc_banner_fg]="#ffffff"
-theme[followed_bg]="#5190c2"
-theme[followed_fg]="#ffffff"
+theme[proc_follow_bg]="#ba83e0"
+theme[proc_banner_bg]="#ba83e0"
+theme[proc_banner_fg]="#111111"
+theme[followed_bg]="#ba83e0"
+theme[followed_fg]="#111111"
 
 # Load graphs (cpu, gpu, per-process) ramp up through the accent.
-theme[cpu_start]="#264e6d"
-theme[cpu_mid]="#5190c2"
-theme[cpu_end]="#7eadd2"
-theme[process_start]="#264e6d"
-theme[process_mid]="#5190c2"
-theme[process_end]="#7eadd2"
+theme[cpu_start]="#7e2db6"
+theme[cpu_mid]="#ba83e0"
+theme[cpu_end]="#d5b4ec"
+theme[process_start]="#7e2db6"
+theme[process_mid]="#ba83e0"
+theme[process_end]="#d5b4ec"
 
 # Things that should alarm keep their meaning: success → warning → error.
 theme[temp_start]="#81c995"
@@ -55,9 +55,9 @@ theme[used_start]="#81c995"
 theme[used_mid]="#fdd633"
 theme[used_end]="#f28b82"
 
-theme[available_start]="#264e6d"
-theme[available_mid]="#5190c2"
-theme[available_end]="#7eadd2"
+theme[available_start]="#7e2db6"
+theme[available_mid]="#ba83e0"
+theme[available_end]="#d5b4ec"
 theme[cached_start]="#555555"
 theme[cached_mid]="#888888"
 theme[cached_end]="#bbbbbb"
@@ -66,9 +66,9 @@ theme[free_mid]="#888888"
 theme[free_end]="#e5e5e5"
 
 # Network: download in the accent, upload in its companion.
-theme[download_start]="#264e6d"
-theme[download_mid]="#5190c2"
-theme[download_end]="#7eadd2"
-theme[upload_start]="#46266d"
-theme[upload_mid]="#8351c2"
-theme[upload_end]="#a37ed2"
+theme[download_start]="#7e2db6"
+theme[download_mid]="#ba83e0"
+theme[download_end]="#d5b4ec"
+theme[upload_start]="#b62d65"
+theme[upload_mid]="#e083a9"
+theme[upload_end]="#ecb4cb"

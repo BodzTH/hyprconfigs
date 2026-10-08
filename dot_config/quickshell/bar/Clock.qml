@@ -25,7 +25,7 @@ BarItem {
         text: Qt.formatDateTime(clock.date, "ddd h:mm:ss AP")
         // Text, not accent: the accent follows the wallpaper now (sync_border.py)
         // and a mid-tone blue clock on a dark bar reads worse than platinum did.
-        color: Theme.text
+        color: clockWidget.tint(Theme.text)
 
         font.family: Theme.fontMain
         font.pixelSize: Theme.fontSize

@@ -71,7 +71,9 @@ Row {
 
                 anchors.right: parent.right
                 anchors.verticalCenter: parent.verticalCenter
-                width: isFocused ? 36 : 28
+                // Fixed width: the focused slot used to widen to 36 to stretch its
+                // pill; with no pill that only made the gaps around it uneven.
+                width: 28
                 height: 28
                 radius: 6
                 antialiasing: true
@@ -80,32 +82,20 @@ Row {
                 activeFocusOnTab: true
 
                 HoverHandler { id: wsHover }
-                // Highlight when focused, hovered, or occupied
-                color: {
-                    if (isFocused) return Theme.bgSelection;
-                    // Hover / keyboard focus: the bar's quiet glass lift (see BarItem)
-                if (wsHover.hovered || wsRect.activeFocus) return Qt.rgba(1, 1, 1, 0.08);
-                    if (isOccupied) return Theme.activeGlow;
-                    return "transparent";
-                }
-                border.color: isFocused || wsRect.activeFocus ? Theme.accent
-                        : wsHover.hovered ? Qt.rgba(1, 1, 1, 0.10)
-                        : isOccupied ? Theme.borderMuted : "transparent"
-                border.width: 1
+                // No pill (hyprlock power-button style, 2026-10-09): the number
+                // itself is the indicator — accent when focused, hovered or
+                // keyboard-focused, white when occupied, dim when empty.
+                color: "transparent"
 
                 Keys.onReturnPressed: workspaces.goTo(wsId)
                 Keys.onSpacePressed: workspaces.goTo(wsId)
 
-                // Smooth, no overshoot — the old OutBack spring stretched the pill
-            // past its size and snapped back, which read as bouncy.
-            Behavior on width { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
-                Behavior on color { ColorAnimation { duration: 120 } }
-                Behavior on border.color { ColorAnimation { duration: 120 } }
-
                 Text {
                     anchors.centerIn: parent
                     text: wsRect.wsId.toString()
-                    color: (wsRect.isFocused || wsHover.hovered || wsRect.isOccupied) ? Theme.text : Theme.subtext0
+                    color: (wsRect.isFocused || wsHover.hovered || wsRect.activeFocus) ? Theme.accent
+                         : wsRect.isOccupied ? Theme.text : Theme.subtext0
+                    Behavior on color { ColorAnimation { duration: 120 } }
 
                     font.family: Theme.fontMain
                     font.pixelSize: 12

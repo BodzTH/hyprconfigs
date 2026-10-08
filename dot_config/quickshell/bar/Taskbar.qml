@@ -36,7 +36,7 @@ Row {
             readonly property int pid: hyprWindow && hyprWindow.lastIpcObject
                 ? (hyprWindow.lastIpcObject.pid || 0) : 0
             readonly property string titleKey: isTerminal ? AppIconService.titleKey(modelData.title) : ""
-            // Browsers: the active tab's title, for page icons (claude.ai).
+            // Browsers: the active tab's title, for its favicon.
             readonly property bool isBrowser: AppIconService.isBrowser(modelData.appId)
             onPidChanged: AppIconService.watch(pid)
             onTitleKeyChanged: AppIconService.watch(pid)
@@ -53,7 +53,7 @@ Row {
                 width: modelData.activated ? 12 : ((hoverHandler.hovered || taskItem.activeFocus) ? 6 : 0)
                 radius: 1.5
                 antialiasing: true
-                color: modelData.activated ? Theme.accent : Theme.subtext0
+                color: Theme.accent   // 12px = active window, 6px = hovered / focused
                 opacity: modelData.activated || hoverHandler.hovered || taskItem.activeFocus ? 1.0 : 0.0
 
                 Behavior on width { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
@@ -65,23 +65,33 @@ Row {
             Keys.onReturnPressed: modelData.activate()
             Keys.onSpacePressed: modelData.activate()
 
+            // Only terminals and browsers read the title (and terminals the
+            // PID); every other window's icon binds on appId alone. A
+            // browser's source re-evaluates on each tab switch but only
+            // changes, and reloads, when the new tab's favicon differs; while
+            // a new tab's favicon is looked up it keeps the one it had.
+            // A plain object, not a property: reading `shown` must not make
+            // iconSrc depend on what iconSrc itself sets (a binding loop).
+            readonly property var memo: ({ shown: "" })
+            readonly property string iconSrc: AppIconService.iconSource(modelData.appId,
+                isBrowser ? modelData.title : titleKey, pid, memo.shown)
+            onIconSrcChanged: memo.shown = iconSrc
+
             IconImage {
                 anchors.centerIn: parent
-                width: 22
-                height: 22
-                asynchronous: true
-                // Only terminals and browsers read the title (and terminals the
-                // PID); every other window's icon binds on appId alone. A
-                // browser's source re-evaluates on each tab switch but only
-                // changes, and reloads, entering or leaving a claude.ai tab.
-                source: AppIconService.iconSource(modelData.appId,
-                    taskItem.isBrowser ? modelData.title : taskItem.titleKey, taskItem.pid)
+                readonly property bool favicon: AppIconService.isFavicon(source)
+                width: favicon ? Math.round(22 * AppIconService.faviconScale) : 22
+                height: width
+                // A tab switch swaps the source; loading it in the background
+                // left a blank frame between the two icons.
+                asynchronous: !taskItem.isBrowser
+                source: taskItem.iconSrc
 
                 // Fallback glyph when icon fails to load
                 Text {
                     anchors.centerIn: parent
-                    text: "󰣆"
-                    color: Theme.subtext0
+                    text: "󰘔"
+                    color: taskItem.tint(Theme.subtext0)
                     font.family: Theme.fontMain
                     font.pixelSize: 16
                     visible: parent.status === Image.Error || !parent.source

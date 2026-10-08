@@ -43,6 +43,10 @@ local function bind(keys, action, opts)
         mask = mask + (MOD_MASKS[parts[i]:upper()] or 0)
     end
     cheatsheet.actions[mask .. ":" .. parts[#parts]] = action
+    -- A locked bind is one meant to work on the lock screen, and the lock
+    -- screen runs inside the "lockscreen" submaps (end of this file), where
+    -- only universal binds survive.
+    if opts and opts.locked then opts.submap_universal = true end
     return hl.bind(keys, action, opts)
 end
 
@@ -186,11 +190,9 @@ bind(m .. " + SHIFT + W", hl.dsp.exec_cmd("~/.config/hypr/scripts/awww_transitio
 bind(m .. " + SHIFT + P", hl.dsp.exec_cmd("~/.config/hypr/scripts/pick_rgb.fish"), { description = "System: Pick an OpenRGB colour from the screen" })
 
 -- ▓▒░ SESSION LOCK
--- Emits logind's Lock signal rather than naming hyprlock here; hypridle picks it
--- up and runs its lock_cmd. Same path sleep takes, so the locker is defined once
--- (hypridle.conf) instead of being repeated at every call site.
-bind(m .. " + L", hl.dsp.exec_cmd("loginctl lock-session"),
-    { description = "System: Lock screen" })
+-- NOTE: the SUPER+L lock bind was removed on 2026-10-09 at Bodz's request. Lock
+-- from the power menu (SUPER+Backspace) or let the idle timer do it; both emit
+-- `loginctl lock-session`, so hypridle.conf's lock_cmd stays the one locker.
 
 -- NOTE: no lid-switch bind. Lid handling belongs to logind, not Hyprland —
 --       closing the lid raises PrepareForSleep, which hypridle's before_sleep_cmd
@@ -226,3 +228,85 @@ bind(m .. " + I", hl.dsp.exec_cmd("hyprpicker -a"), { description = "Capture: Pi
 
 -- ▓▒░ RELOAD CONFIG
 bind(m .. " + SHIFT + R", hl.dsp.exec_cmd("hyprctl reload"), { description = "System: Reload Hyprland config" })
+
+-- ▓▒░ LOCK SCREEN POWER BUTTONS (keyboard)
+-- ←/→ select sleep / reboot / shutdown on hyprlock, Enter fires the selection,
+-- Esc or any other key drops it. Plain arrows and Enter can't be global binds
+-- (they'd be eaten everywhere), so they live in two submaps that only exist
+-- while hyprlock runs. scripts/lock_buttons.py's watcher enters "lockscreen"
+-- when the lock starts, switches to "lockscreen-armed" while something is
+-- selected — only then is Enter taken from the password field — and resets on
+-- unlock. Locked binds above are universal (see bind()), so SUPER+K and the
+-- media keys keep working in here.
+local LOCK_BUTTONS = "~/.config/hypr/scripts/lock_buttons.py"
+
+-- Global: the watcher calls lockbuttons.enter() over `hyprctl eval`.
+lockbuttons = {}
+
+function lockbuttons.enter(pid, submap)
+    lockbuttons.pid = pid
+    hl.dispatch(hl.dsp.submap(submap))
+end
+
+local function is_hyprlock(pid)
+    local f = pid and io.open("/proc/" .. pid .. "/comm")
+    local comm = f and f:read("l")
+    if f then f:close() end
+    return comm == "hyprlock"
+end
+
+-- True while a hyprlock owns these submaps. If its watcher died without
+-- resetting the submap, the next key resets it here rather than leaving every
+-- normal bind dead. Reads /proc in-process: no fork per key. A config reload
+-- while locked wipes this Lua state but keeps the submap, so a lost pid is
+-- looked up again once instead of being taken for a dead lock.
+local function lock_alive()
+    if not is_hyprlock(lockbuttons.pid) then
+        local p = io.popen("pidof -s hyprlock")
+        lockbuttons.pid = p and tonumber(p:read("l") or "")
+        if p then p:close() end
+    end
+    if is_hyprlock(lockbuttons.pid) then return true end
+    lockbuttons.enter(nil, "reset")
+    return false
+end
+
+local function lock_key(cmd)
+    return function()
+        if lock_alive() then
+            hl.exec_cmd(LOCK_BUTTONS .. " key " .. lockbuttons.pid .. " " .. cmd)
+        end
+    end
+end
+
+-- The catch-all fires for every key, bound ones included (seen on 0.56.2), so
+-- it skips the keys these submaps handle themselves — otherwise → would select
+-- and clear in the same press.
+local LOCK_KEYS = { "Left", "Right", "Return", "KP_Enter", "Escape" }   -- keysym case: is_key_down("right") is nil
+
+local function lock_typed()
+    for _, k in ipairs(LOCK_KEYS) do
+        if hl.is_key_down(k) then return end
+    end
+    lock_key("clear")()
+end
+
+local function lock_nav_binds()
+    hl.bind("left",  lock_key("prev"), { locked = true, description = "System: Lock screen button left" })
+    hl.bind("right", lock_key("next"), { locked = true, description = "System: Lock screen button right" })
+end
+
+hl.define_submap("lockscreen", function()
+    lock_nav_binds()
+    -- non_consuming: every other key still reaches the password field.
+    hl.bind("catchall", lock_alive, { locked = true, non_consuming = true })
+end)
+
+hl.define_submap("lockscreen-armed", function()
+    lock_nav_binds()
+    hl.bind("Return",   lock_key("activate"), { locked = true, description = "System: Lock screen press selected button" })
+    hl.bind("KP_Enter", lock_key("activate"), { locked = true, description = "System: Lock screen press selected button" })
+    hl.bind("escape",   lock_key("clear"),    { locked = true, description = "System: Lock screen drop button selection" })
+    -- Typing drops the selection, so Enter goes back to submitting the password.
+    hl.bind("catchall", lock_typed, { locked = true, non_consuming = true })
+end)

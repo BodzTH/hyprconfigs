@@ -22,7 +22,7 @@ BarItem {
     Text {
         anchors.centerIn: parent
         text: "󰹑"
-        color: Theme.text
+        color: screenshotBtn.tint(Theme.text)
         font.family: Theme.fontMain
         font.pixelSize: 14
     }

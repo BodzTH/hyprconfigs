@@ -47,8 +47,8 @@ BarItem {
         clip: true
 
         Text {
-            text: isPlaying ? "󰐊" : "󰏤"
-            color: Theme.text
+            text: isPlaying ? "" : "󰏦"
+            color: mediaWidget.tint(isPlaying ? Theme.accent : Theme.text)
             font.family: Theme.fontMain
             font.pixelSize: 14
             renderType: Text.NativeRendering
@@ -57,7 +57,7 @@ BarItem {
         Text {
             id: mediaText
             text: mediaWidget.getTrackText()
-            color: Theme.subtext0
+            color: mediaWidget.tint(Theme.subtext0)
             font.family: Theme.fontMain
             font.pixelSize: 11
             font.weight: Font.Bold

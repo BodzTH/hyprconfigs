@@ -18,11 +18,10 @@ Rectangle {
     radius: 12
     antialiasing: true
 
-    color: (itemHover.hovered || isSelected) ? Theme.bgSelection : "transparent"
-    border.color: (itemHover.hovered || isSelected) ? Theme.glassBorder : "transparent"
-    border.width: 1
-    Behavior on color { ColorAnimation { duration: 120 } }
-    Behavior on border.color { ColorAnimation { duration: 120 } }
+    // hyprlock power-button style: no row background; icon and label turn
+    // accent while hovered or keyboard-selected.
+    readonly property bool lit: itemHover.hovered || isSelected
+    color: "transparent"
 
     RowLayout {
         anchors { fill: parent; leftMargin: 10; rightMargin: 10 }
@@ -30,14 +29,16 @@ Rectangle {
         
         Text {
             text: root.iconText
-            color: Theme.text
+            color: root.lit ? Theme.accent : Theme.text
+            Behavior on color { ColorAnimation { duration: 120 } }
             font.family: Theme.fontMain
             font.pixelSize: 16
         }
         
         Text {
             text: root.labelText
-            color: Theme.text
+            color: root.lit ? Theme.accent : Theme.text
+            Behavior on color { ColorAnimation { duration: 120 } }
             font.family: Theme.fontMain
             font.pixelSize: 13
             Layout.fillWidth: true
